@@ -1,28 +1,29 @@
-package main
+package streamer
 
 import (
 	"bufio"
-	"bytes"
-	"compress/gzip"
-	"encoding/base64"
-	"encoding/json"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"os"
 	"strings"
 
 	"github.com/pion/webrtc/v2"
-	"github.com/siddontang/go-log/log"
+	log "github.com/sirupsen/logrus"
+)
+
+const (
+	SDP_OFFER_PROMPT          = "Send this offer:"
+	SDP_OFFER_WAITING_PROMPT  = "Please, paste the remote offer:"
+	SDP_ANSWER_PROMPT         = "Send this answer:"
+	SDP_ANSWER_WAITING_PROMPT = "Please, paste the remote answer:"
 )
 
 type CompletionHandler func()
 
 // Session contains common elements to perform send/receive
 type Session struct {
-	Done           chan struct{}
-	sdpInput       io.Reader
-	sdpOutput      io.Writer
+	sdpReader      io.Reader
+	sdpWriter      io.Writer
 	peerConnection *webrtc.PeerConnection
 	onCompletion   CompletionHandler
 	stunServers    []string
@@ -30,12 +31,12 @@ type Session struct {
 }
 
 // New creates a new Session
-func NewConn() Session {
+func NewSession(SDPReader io.Reader, SDPWriter io.Writer) Session {
 	sess := Session{
-		sdpInput:    os.Stdin,
-		sdpOutput:   os.Stdout,
-		Done:        make(chan struct{}),
+		sdpReader:   SDPReader,
+		sdpWriter:   SDPWriter,
 		stunServers: []string{"stun:stun.l.google.com:19302"},
+		writer:      os.Stdout,
 	}
 
 	return sess
@@ -66,16 +67,16 @@ func (s *Session) CreateConnection(onConnectionStateChange func(connectionState 
 func (s *Session) ReadSDP() error {
 	var sdp webrtc.SessionDescription
 
-	fmt.Fprintln(s.writer, "Please, paste the remote SDP:")
+	fmt.Fprintf(s.writer, "%s\n\n", SDP_OFFER_WAITING_PROMPT)
 	for {
-		encoded, err := MustReadStream(s.sdpInput)
+		encoded, err := MustReadStream(s.sdpReader)
 		if err == nil {
 			if err := Decode(encoded, &sdp); err == nil {
 				break
 			}
 			return err
 		}
-		fmt.Fprintln(s.writer, "Invalid SDP, try again...")
+		fmt.Fprintln(s.writer, "Invalid offer, try again...")
 	}
 
 	return s.peerConnection.SetRemoteDescription(sdp)
@@ -93,34 +94,37 @@ func (s *Session) CreateAnswer() error {
 	if err != nil {
 		return err
 	}
-	return s.createSessionDescription(answer)
+
+	return s.createSessionDescription(answer, SDP_ANSWER_PROMPT)
 }
 
 // CreateOffer set the local description and print the offer SDP
 func (s *Session) CreateOffer() error {
 	// Create an offer
-	answer, err := s.peerConnection.CreateOffer(nil)
+	offer, err := s.peerConnection.CreateOffer(nil)
 	if err != nil {
 		return err
 	}
-	return s.createSessionDescription(answer)
+	return s.createSessionDescription(offer, SDP_OFFER_PROMPT)
 }
 
 // createSessionDescription set the local description and print the SDP
-func (s *Session) createSessionDescription(desc webrtc.SessionDescription) error {
+func (s *Session) createSessionDescription(desc webrtc.SessionDescription, prompt string) error {
 	// Sets the LocalDescription, and starts our UDP listeners
 	if err := s.peerConnection.SetLocalDescription(desc); err != nil {
 		return err
 	}
-	desc.SDP = StripSDP(desc.SDP)
+
+	// desc.SDP = StripSDP(desc.SDP)
+	// logrus.Infof("SEND \n %v+", desc.SDP)
 
 	// writer the SDP in base64 so we can paste it in browser
 	resp, err := Encode(desc)
 	if err != nil {
 		return err
 	}
-	fmt.Fprintln(s.writer, "Send this SDP:")
-	fmt.Fprintf(s.sdpOutput, "%s\n", resp)
+	fmt.Fprintf(s.writer, "%s\n\n", prompt)
+	fmt.Fprintf(s.sdpWriter, "%s\n", resp)
 	return nil
 }
 
@@ -153,70 +157,4 @@ func MustReadStream(stream io.Reader) (string, error) {
 	}
 
 	return in, nil
-}
-
-// StripSDP remove useless elements from an SDP
-func StripSDP(originalSDP string) string {
-	finalSDP := strings.Replace(originalSDP, "a=group:BUNDLE audio video data", "a=group:BUNDLE data", -1)
-	tmp := strings.Split(finalSDP, "m=audio")
-	beginningSdp := tmp[0]
-
-	var endSdp string
-	if len(tmp) > 1 {
-		tmp = strings.Split(tmp[1], "a=end-of-candidates")
-		endSdp = strings.Join(tmp[2:], "a=end-of-candidates")
-	} else {
-		endSdp = strings.Join(tmp[1:], "a=end-of-candidates")
-	}
-
-	finalSDP = beginningSdp + endSdp
-	finalSDP = strings.Replace(finalSDP, "\r\n\r\n", "\r\n", -1)
-	finalSDP = strings.Replace(finalSDP, "\n\n", "\n", -1)
-	return finalSDP
-}
-
-// Encode encodes the input in base64
-// It can optionally zip the input before encoding
-func Encode(obj interface{}) (string, error) {
-	b, err := json.Marshal(obj)
-	if err != nil {
-		return "", err
-	}
-	var gzbuff bytes.Buffer
-	gz, err := gzip.NewWriterLevel(&gzbuff, gzip.BestCompression)
-	if err != nil {
-		return "", err
-	}
-	if _, err := gz.Write(b); err != nil {
-		return "", err
-	}
-	if err := gz.Flush(); err != nil {
-		return "", err
-	}
-	if err := gz.Close(); err != nil {
-		return "", err
-	}
-
-	return base64.StdEncoding.EncodeToString(gzbuff.Bytes()), nil
-}
-
-// Decode decodes the input from base64
-// It can optionally unzip the input after decoding
-func Decode(in string, obj interface{}) error {
-	b, err := base64.StdEncoding.DecodeString(in)
-	if err != nil {
-		return err
-	}
-
-	gz, err := gzip.NewReader(bytes.NewReader(b))
-	if err != nil {
-		return err
-	}
-	defer gz.Close()
-	s, err := ioutil.ReadAll(gz)
-	if err != nil {
-		return err
-	}
-
-	return json.Unmarshal(s, obj)
 }

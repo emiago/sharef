@@ -1,60 +1,59 @@
 package main
 
 import (
+	"flag"
 	"fmt"
-	"log"
 	"os"
-	"path"
+	"sharef/cli"
+
+	log_prefixed "github.com/chappjc/logrus-prefix"
+	"github.com/sirupsen/logrus"
 )
 
+var verbose = flag.Int("v", 3, "verbosity")
+
+func init() {
+	logrus.SetFormatter(&log_prefixed.TextFormatter{
+		FullTimestamp: true,
+	})
+}
+
 func main() {
-	fmt.Println(os.Args)
-	args := os.Args[1:]
-	fmt.Println(args, len(args))
+	// receive := flag.NewFlagSet("receive", flag.ExitOnError)
+	flag.Usage = func() {
+		s := `Usage:
+  send		- Start sending/streaming files. More options are available.
+  receive 	- Start receiving files.
+  `
+
+		fmt.Fprintln(os.Stderr, s)
+		fmt.Fprintln(os.Stderr, "Options:")
+		flag.PrintDefaults()
+	}
+	flag.Parse()
+	logrus.SetLevel(logrus.Level(*verbose))
+
+	args := flag.Args()
+
+	// We expect always some action argument:
+	if len(args) == 0 {
+		flag.Usage()
+		return
+	}
 	ParseArgs(args)
 }
 
 func ParseArgs(args []string) {
-	// files := args
-	// for _, f := range files {
-	// 	fmt.Println("Sending file", f)
-	// }
-
-	sess := Session{
-		sdpInput:    os.Stdin,
-		sdpOutput:   os.Stdout,
-		Done:        make(chan struct{}),
-		stunServers: []string{"stun:stun.l.google.com:19302"},
-		writer:      os.Stdout,
+	action := args[0]
+	args = args[1:]
+	switch action {
+	case "push":
+		cli.Push(args)
+	case "pull":
+		cli.Pull(args)
+	case "deamon":
+		cli.Deamon(args)
+	default:
+		fmt.Println("Unknown action")
 	}
-
-	if len(args) == 0 {
-		//Receiver
-		fmt.Println("Starting receiver")
-		// b := bytes.NewBuffer([]byte{})
-		s := NewReceiver(sess, os.Stdout)
-		if err := s.Dial(); err != nil {
-			log.Fatal(err)
-		}
-
-		<-s.Done
-		// fmt.Println("GOT DATA", b.String())
-		return
-	}
-
-	fmt.Println("Starting sender")
-
-	s := NewSender(sess)
-	if err := s.Dial(); err != nil {
-		log.Fatal(err)
-	}
-
-	for _, file := range args {
-		stream, err := os.Open(file)
-		if err != nil {
-			log.Fatal(err)
-		}
-		s.SendFile(path.Base(stream.Name()), stream)
-	}
-	<-s.Done
 }

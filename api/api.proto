@@ -1,0 +1,26 @@
+syntax = "proto3";
+// The greeting service definition.
+service Sender {
+    // Sends a greeting
+  rpc Hello (HelloRequest) returns (HelloReply) {}
+  // Sends another greeting
+  rpc SendFile (SendFileRequest) returns (stream STDOutput) {}
+}
+  
+  // The request message containing the user's name.
+message HelloRequest {
+  string name = 1;
+}
+
+message HelloReply {
+  string name = 1;
+}
+
+message SendFileRequest {
+  string filename = 1;
+}
+
+// The response message containing the greetings
+message STDOutput {
+  string line = 1;
+}
