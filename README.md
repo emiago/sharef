@@ -70,9 +70,6 @@ sharef push -f file/dir
 
 ## >|> Make connection once and send on the fly
 
-![SENDDEMO](docs/SharefDeamonDemo.gif)
-
-
 After exchanching SDP, all sending will be done by deamon running in background.
 
 **Sender:**
