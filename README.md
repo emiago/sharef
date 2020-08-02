@@ -11,11 +11,6 @@ It uses WebRTC technology underneath.
 Webrtc makes encrypted and p2p communication which makes sharing files and streaming highly secure. There is no third-party dependency.
 It is totally written in GO language using pion/webrtc library.
 
-
-## NOTE
-**This is still experimental, and code needs to be refactored before going open source.
-Here you should find precompiled builds. Any feedback is welcome!**
-
 ### Features list:
 - Sending files 
 - Sending directories
@@ -28,7 +23,7 @@ Here you should find precompiled builds. Any feedback is welcome!**
 For now only linux users :)
 
 ```
-sudo wget -P /usr/bin https://github.com/emiraganov/sharef/releases/download/v0.2/sharef
+sudo wget -P /usr/bin https://github.com/emiraganov/sharef/releases/download/v0.1/sharef
 sudo chmod +x /usr/bin/sharef
 ```
 
@@ -99,18 +94,6 @@ Sharef will detect deamon is running and it will just tell deamon to do the job.
 Deamon is listening on 9876 port by default, using HTTP2 protocol.
 BE AWARE receiver will put everything in same directory where it is run.
 
-
-
-# Roadmap
-
-- [ ] Refactoring and more tests
-- [ ] ADD Demos and more docs
-- [ ] File permissions better handling
-- [ ] Detect connection changes
-- [ ] End program on when all files are sent
-- [ ] Running with SDP piped on stdin
-- [ ] Making code public
-- And more ...
 
 # Feedback 
 
