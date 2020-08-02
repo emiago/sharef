@@ -72,6 +72,8 @@ sharef push -f file/dir
 
 After exchanching SDP, all sending will be done by deamon running in background.
 
+![SENDDEMO](docs/SharefDeamonDemo.gif)
+
 **Sender:**
 
 Calling this will deamonize sender

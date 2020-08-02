@@ -4,7 +4,6 @@ import (
 	context "context"
 	"fmt"
 	"io"
-	"log"
 	"net"
 	"sharef/api"
 	"sharef/streamer"
@@ -19,22 +18,22 @@ type SenderDaemonServer struct {
 	sender *streamer.Sender
 }
 
-func StartSenderDaemonServer(sender *streamer.Sender, port int) {
+func StartSenderDaemonServer(sender *streamer.Sender, port int) error {
 	lis, err := net.Listen("tcp", fmt.Sprintf(":%d", port))
 	if err != nil {
-		log.Fatalf("failed to listen: %v", err)
+		return err
 	}
 	grpcServer := grpc.NewServer()
 	api.RegisterSenderServer(grpcServer, &SenderDaemonServer{sender: sender})
 	// determine whether to use TLS
-	grpcServer.Serve(lis)
+	return grpcServer.Serve(lis)
 }
 
 func (*SenderDaemonServer) Hello(context.Context, *api.HelloRequest) (*api.HelloReply, error) {
 	return &api.HelloReply{}, nil
 }
 func (s *SenderDaemonServer) SendFile(req *api.SendFileRequest, stream api.Sender_SendFileServer) error {
-	streamer, err := s.sender.InitFileStreamer(req.Filename, nil)
+	streamer, err := s.sender.InitFileStreamer(req.Filename)
 	if err != nil {
 		return status.Errorf(codes.Internal, err.Error())
 	}
@@ -67,6 +66,4 @@ func (s *SenderDaemonServer) SendFile(req *api.SendFileRequest, stream api.Sende
 			return status.Errorf(codes.Internal, err.Error())
 		}
 	}
-
-	return nil
 }

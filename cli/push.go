@@ -81,6 +81,7 @@ func bootstrapSenderDeamon() {
 	if err := cmd.Process.Release(); err != nil {
 		log.Fatal(err)
 	}
+	// cmd.Wait()
 }
 
 func sendFiles(args []string, keepsync bool) error {

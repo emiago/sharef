@@ -27,5 +27,7 @@ func deamonizeMe() {
 	}
 
 	fmt.Println("Running in daemon mode...")
-	deamon.StartSenderDaemonServer(s, 9876)
+	if err := deamon.StartSenderDaemonServer(s, 9876); err != nil {
+		fmt.Printf("Fail to star deamon: %s\n", err)
+	}
 }
