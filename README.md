@@ -11,12 +11,16 @@ It uses WebRTC technology underneath.
 Webrtc makes encrypted and p2p communication which makes sharing files and streaming highly secure. There is no third-party dependency.
 It is totally written in GO language using pion/webrtc library.
 
+
 ### Features list:
 - Sending files 
 - Sending directories
 - Sending multiple files in one command
 - Sending and streaming changes of file/directory from sender
 - Making connection once send files on the fly
+
+**NOTE:** It is experimental right now. Code should be improved.
+
 
 # Install
 
