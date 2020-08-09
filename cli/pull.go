@@ -37,6 +37,7 @@ func receiveFiles() {
 	if err := r.Dial(); err != nil {
 		log.Fatal(err)
 	}
+	defer r.Close()
 
 	wg.Wait()
 }

@@ -101,7 +101,7 @@ func sendFiles(args []string, keepsync bool) error {
 	if err := s.Dial(); err != nil {
 		return errx.Wrapf(err, "Dial failed")
 	}
-	// defer s.Close()
+	defer s.Close()
 
 	//Stream files
 	fmt.Println("")

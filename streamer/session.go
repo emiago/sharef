@@ -40,6 +40,14 @@ func NewSession(SDPReader io.Reader, SDPWriter io.Writer) Session {
 	return sess
 }
 
+func (s *Session) Close() error {
+	if s.peerConnection != nil {
+		return s.peerConnection.Close()
+	}
+
+	return nil
+}
+
 // CreateConnection prepares a WebRTC connection
 func (s *Session) CreateConnection(onConnectionStateChange func(connectionState webrtc.ICEConnectionState)) error {
 	config := webrtc.Configuration{
