@@ -10,6 +10,9 @@ build:
 install:
 	go install
 
+test:
+	go test ./...
+
 integrationtests:
 	# cd itests/
 	# go test -timeout 60s --tags integration ./itests/... -v  

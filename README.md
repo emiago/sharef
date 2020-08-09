@@ -102,6 +102,16 @@ BE AWARE receiver will put everything in same directory where it is run.
 
 Any feedback is welcome!
 
+# Contribute
+
+Building sharef
+
+```
+make //build sharef
+make test //run unit tests
+make integrationtest //run integration tests
+```
+
 # References
 
 - https://github.com/pion/webrtc
