@@ -27,7 +27,7 @@ It is totally written in GO language using pion/webrtc library.
 For now only linux users :)
 
 ```
-sudo wget -P /usr/bin https://github.com/emiraganov/sharef/releases/download/v0.1/sharef
+sudo wget -P /usr/bin https://github.com/emiraganov/sharef/releases/download/v0.2/sharef
 sudo chmod +x /usr/bin/sharef
 ```
 
