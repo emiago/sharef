@@ -96,12 +96,12 @@ func (s *SendStreamer) OnClose() {
 
 func (s *SendStreamer) OnOpen() {
 	s.log.Infof("Send receive streamer open")
-	// fmt.Fprintln(s.output, "\nSending files:")
 
 	if err := s.processFile(s.streamInfo, s.streamPath); err != nil {
 		s.log.WithError(err).Error("Failed to process file ", s.streamPath)
 	}
 
+	//Need to slove this better, but for now we should not close our self until buffer is empty
 	for {
 		if s.channel.BufferedAmount() == 0 {
 			break

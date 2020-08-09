@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
+	"sharef/cli/sdp"
 	"sharef/deamon"
 	"sharef/errx"
 	"sharef/streamer"
@@ -93,8 +94,10 @@ func sendFiles(args []string, keepsync bool) error {
 	}
 
 	//Sender
-	sess := streamer.NewSession(os.Stdin, os.Stdout)
+	reader, writer := sdp.SenderPipe() //This will send prompts and offer/answer from stdin,stdout
+	sess := streamer.NewSession(reader, writer)
 	s := streamer.NewSender(sess)
+
 	if err := s.Dial(); err != nil {
 		return errx.Wrapf(err, "Dial failed")
 	}

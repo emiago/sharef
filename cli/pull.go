@@ -3,7 +3,7 @@ package cli
 import (
 	"flag"
 	"fmt"
-	"os"
+	"sharef/cli/sdp"
 	"sharef/streamer"
 	"sync"
 
@@ -19,7 +19,8 @@ func Pull(args []string) {
 }
 
 func receiveFiles() {
-	sess := streamer.NewSession(os.Stdin, os.Stdout)
+	reader, writer := sdp.ReceiverPipe() //This will send prompts and offer/answer from stdin,stdout
+	sess := streamer.NewSession(reader, writer)
 	r := streamer.NewReceiver(sess, "")
 
 	wg := sync.WaitGroup{}

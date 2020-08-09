@@ -1,8 +1,6 @@
 package streamer
 
 import (
-	"fmt"
-
 	"github.com/pion/webrtc/v2"
 	"github.com/sirupsen/logrus"
 	log "github.com/sirupsen/logrus"
@@ -54,7 +52,6 @@ func (s *Receiver) Dial() error {
 		return err
 	}
 
-	fmt.Fprintln(s.writer) //Add one break
 	if err := s.CreateAnswer(); err != nil {
 		s.log.Errorln(err)
 		return err

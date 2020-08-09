@@ -4,7 +4,6 @@ import (
 	"bufio"
 	"fmt"
 	"io"
-	"os"
 	"strings"
 
 	"github.com/pion/webrtc/v2"
@@ -27,7 +26,7 @@ type Session struct {
 	peerConnection *webrtc.PeerConnection
 	onCompletion   CompletionHandler
 	stunServers    []string
-	writer         io.Writer
+	// writer         io.Writer
 }
 
 // New creates a new Session
@@ -36,7 +35,6 @@ func NewSession(SDPReader io.Reader, SDPWriter io.Writer) Session {
 		sdpReader:   SDPReader,
 		sdpWriter:   SDPWriter,
 		stunServers: []string{"stun:stun.l.google.com:19302"},
-		writer:      os.Stdout,
 	}
 
 	return sess
@@ -67,7 +65,6 @@ func (s *Session) CreateConnection(onConnectionStateChange func(connectionState 
 func (s *Session) ReadSDP() error {
 	var sdp webrtc.SessionDescription
 
-	fmt.Fprintf(s.writer, "%s\n\n", SDP_OFFER_WAITING_PROMPT)
 	for {
 		encoded, err := MustReadStream(s.sdpReader)
 		if err == nil {
@@ -76,7 +73,6 @@ func (s *Session) ReadSDP() error {
 			}
 			return err
 		}
-		fmt.Fprintln(s.writer, "Invalid offer, try again...")
 	}
 
 	return s.peerConnection.SetRemoteDescription(sdp)
@@ -123,7 +119,6 @@ func (s *Session) createSessionDescription(desc webrtc.SessionDescription, promp
 	if err != nil {
 		return err
 	}
-	fmt.Fprintf(s.writer, "%s\n\n", prompt)
 	fmt.Fprintf(s.sdpWriter, "%s\n", resp)
 	return nil
 }

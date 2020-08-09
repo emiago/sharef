@@ -1,7 +1,6 @@
 package streamer
 
 import (
-	"fmt"
 	"os"
 
 	"github.com/pion/webrtc/v2"
@@ -48,7 +47,7 @@ func (s *Sender) Dial() error {
 		return err
 	}
 
-	fmt.Fprintln(s.writer) //Add one break
+	// fmt.Fprintln(s.writer) //Add one break
 	if err := s.ReadSDP(); err != nil {
 		return err
 	}
