@@ -104,6 +104,12 @@ Any feedback is welcome!
 
 # Contribute
 
+Prereqs
+- [Golang](https://golang.org/)
+- [proto-lens](https://google.github.io/proto-lens/)
+- [Go support for Protocol Buffers](https://github.com/golang/protobuf)
+
+
 Building sharef
 
 ```
