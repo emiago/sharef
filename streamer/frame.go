@@ -31,7 +31,7 @@ func (f *Frame) GetT() int {
 
 type FrameError struct {
 	Frame
-	Err error
+	Err string
 }
 
 type FrameNewStream struct {
@@ -44,10 +44,15 @@ type FrameData struct {
 	Data []byte
 }
 
-func ParseFrameData(data []byte) (Framer, error) {
-	var frame Framer
-	frame = &Frame{}
-	if err := json.Unmarshal(data, &frame); err != nil {
+func MarshalFramer(f Framer, t int) ([]byte, error) {
+	f.T(t)
+	data, err := json.Marshal(f)
+	return data, err
+}
+
+func UnmarshalFramer(data []byte) (Framer, error) {
+	var frame Framer = &Frame{}
+	if err := json.Unmarshal(data, frame); err != nil {
 		return nil, err
 	}
 
@@ -64,6 +69,6 @@ func ParseFrameData(data []byte) (Framer, error) {
 		return nil, fmt.Errorf("Unknown type")
 	}
 
-	err := json.Unmarshal(data, &frame)
+	err := json.Unmarshal(data, frame)
 	return frame, err
 }

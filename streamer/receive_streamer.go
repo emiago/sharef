@@ -59,7 +59,7 @@ func (s *ReceiveStreamer) OnClose() {
 }
 
 func (s *ReceiveStreamer) OnMessage(msg webrtc.DataChannelMessage) {
-	f, err := ParseFrameData(msg.Data)
+	f, err := UnmarshalFramer(msg.Data)
 	if err != nil {
 		s.log.Error(err)
 		return
@@ -72,12 +72,12 @@ func (s *ReceiveStreamer) OnMessage(msg webrtc.DataChannelMessage) {
 		return
 	case *FrameNewStream:
 		if !s.isCurrentStreamSynced() {
-			s.SendFrame(FRAME_ERROR, &FrameError{Err: fmt.Errorf("Current Stream not synced")})
+			s.SendFrame(FRAME_ERROR, &FrameError{Err: "Current Stream not synced"})
 			return
 		}
 
 		if err := s.handleNewStreamFrame(m.Info); err != nil {
-			s.SendFrame(FRAME_ERROR, &FrameError{Err: err})
+			s.SendFrame(FRAME_ERROR, &FrameError{Err: err.Error()})
 			return
 		}
 	}

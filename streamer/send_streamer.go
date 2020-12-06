@@ -252,7 +252,7 @@ func (s *SendStreamer) streamFile(file io.Reader, fi os.FileInfo) error {
 func (s *SendStreamer) OnMessage(msg webrtc.DataChannelMessage) {
 	// s.log.Infof("Sender on message called")
 
-	f, err := ParseFrameData(msg.Data)
+	f, err := UnmarshalFramer(msg.Data)
 	if err != nil {
 		s.log.Error(err)
 		return
@@ -260,39 +260,7 @@ func (s *SendStreamer) OnMessage(msg webrtc.DataChannelMessage) {
 	s.log.Infof("Sender on message called %d", f.GetT())
 
 	s.frameCh <- f
-
-	// var frame Framer
-	// frame = &Frame{}
-	// json.Unmarshal(Data, &frame)
-
-	// switch frame.GetT() {
-	// case FRAME_DATA:
-	// 	f := &FrameData{}
-	// 	json.Unmarshal(Data, f)
-	// 	s.streamFrameData(f)
-	// 	return
-	// case FRAME_ERROR:
-	// 	frame = &FrameError{}
-	// 	json.Unmarshal(Data, &frame)
-	// }
-
-	// s.frameCh <- frame
-	// s.sendFrame(FRAME_OK, Frame{})
 }
-
-// func (s *SendStreamer) SendFrame(t int, f Framer) (n uint64, err error) {
-// 	f.T(t)
-
-// 	data, err := json.Marshal(f)
-// 	if err != nil {
-// 		s.log.Error(err)
-// 		return 0, err
-// 	}
-
-// 	n = uint64(len(data))
-// 	err = s.channel.Send(data)
-// 	return
-// }
 
 func (s *SendStreamer) postFrame(t int, f Framer) (Framer, error) {
 	if _, err := s.SendFrame(t, f); err != nil {
@@ -303,7 +271,7 @@ func (s *SendStreamer) postFrame(t int, f Framer) (Framer, error) {
 
 	if res.GetT() == FRAME_ERROR {
 		frame := res.(*FrameError)
-		return nil, frame.Err
+		return nil, fmt.Errorf(frame.Err)
 	}
 
 	return res, nil

@@ -1,7 +1,6 @@
 package streamer
 
 import (
-	"encoding/json"
 	"io"
 	"io/ioutil"
 	"os"
@@ -27,9 +26,7 @@ type ReadFileStreamerWebrtc struct {
 
 //Implements FrameStreamer
 func (s *ReadFileStreamerWebrtc) SendFrame(t int, f Framer) (n uint64, err error) {
-	f.T(t)
-
-	data, err := json.Marshal(f)
+	data, err := MarshalFramer(f, t)
 	if err != nil {
 		return 0, err
 	}
@@ -54,9 +51,7 @@ type WriteFileStreamerWebrtc struct {
 
 //Implements FrameStreamer
 func (s *WriteFileStreamerWebrtc) SendFrame(t int, f Framer) (n uint64, err error) {
-	f.T(t)
-
-	data, err := json.Marshal(f)
+	data, err := MarshalFramer(f, t)
 	if err != nil {
 		return 0, err
 	}
