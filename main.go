@@ -22,8 +22,8 @@ func main() {
 	// receive := flag.NewFlagSet("receive", flag.ExitOnError)
 	flag.Usage = func() {
 		s := `Usage:
-  send		- Start sending/streaming files. More options are available.
-  receive 	- Start receiving files.
+  push		- Start sending/streaming files. More options are available.
+  pull 		- Start receiving files.
   `
 
 		fmt.Fprintln(os.Stderr, s)
