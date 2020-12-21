@@ -79,8 +79,8 @@ func (s *Session) ReadSDP() error {
 			if err := Decode(encoded, &sdp); err == nil {
 				break
 			}
-			return err
 		}
+		return err
 	}
 
 	return s.peerConnection.SetRemoteDescription(sdp)

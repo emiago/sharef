@@ -61,6 +61,32 @@ func (s *Receiver) Dial() error {
 	return nil
 }
 
+func (s *Receiver) DialOfferFirst() error {
+	if err := s.CreateConnection(s.onConnectionStateChange()); err != nil {
+		log.Errorln(err)
+		return err
+	}
+
+	s.OnDataChannel(func(d *webrtc.DataChannel) {
+		s.log.Infof("New DataChannel %s %d\n", d.Label(), d.ID())
+
+		receiver := NewReceiveStreamer(d, s.outputDir)
+		go s.OnNewReceiveStreamer(receiver)
+	})
+
+	if err := s.CreateOffer(); err != nil {
+		return err
+	}
+
+	// fmt.Fprintln(s.writer) //Add one break
+	if err := s.ReadSDP(); err != nil {
+		return err
+	}
+
+	s.log.Infoln("Starting to receive data...")
+	return nil
+}
+
 func (s *Receiver) onConnectionStateChange() func(connectionState webrtc.ICEConnectionState) {
 	return func(connectionState webrtc.ICEConnectionState) {
 		s.log.Infof("ICE Connection State has changed: %s\n", connectionState.String())

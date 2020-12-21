@@ -8,7 +8,7 @@ import (
 
 const (
 	SDP_ANSWER_PROMPT         = "Send this answer:"
-	SDP_ANSWER_WAITING_PROMPT = "Please, paste the remote answer:"
+	SDP_ANSWER_WAITING_PROMPT = "Please, paste the remote offer:"
 )
 
 type STDReceiver struct {

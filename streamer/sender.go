@@ -61,6 +61,30 @@ func (s *Sender) Dial() error {
 	return nil
 }
 
+func (s *Sender) DialWithAnswerFirst() error {
+	if err := s.CreateConnection(s.onConnectionStateChange()); err != nil {
+		return err
+	}
+
+	if err := s.ReadSDP(); err != nil {
+		s.log.Errorln(err)
+		return err
+	}
+
+	if err := s.CreateAnswer(); err != nil {
+		s.log.Errorln(err)
+		return err
+	}
+
+	channel, err := s.createFileChannel("filestream")
+	if err != nil {
+		return err
+	}
+	s.filechannel = channel
+
+	return nil
+}
+
 // func (s *Sender) StreamAudio(dest string) (err error) {
 // 	codec := webrtc.NewRTPPCMACodec(webrtc.DefaultPayloadTypePCMA, 8000)
 // 	track, _ := webrtc.NewTrack(webrtc.DefaultPayloadTypePCMA, 1, "audio", "test", codec)
