@@ -1,6 +1,7 @@
 package streamer
 
 import (
+	"context"
 	"os"
 
 	"github.com/pion/webrtc/v2"
@@ -94,21 +95,15 @@ func (s *Sender) DialWithAnswerFirst() error {
 // 	// return s.SendFileWithOptions(dest, nil)
 // }
 
-func (s *Sender) SendFile(path string, options ...SendStreamerOption) (err error) {
-	return s.sendFileWithOptions(path, options...)
-}
-
-func (s *Sender) sendFileWithOptions(dest string, options ...SendStreamerOption) (err error) {
+func (s *Sender) SendFile(dest string, options ...SendStreamerOption) (err error) {
 	sender, err := s.InitFileStreamer(dest, options...)
 	if err != nil {
 		return err
 	}
 
-	if err := sender.Stream(); err != nil {
+	if err := sender.Stream(context.Background()); err != nil {
 		return err
 	}
-
-	<-sender.DoneSending
 
 	return err
 }
@@ -121,6 +116,10 @@ func (s *Sender) InitFileStreamer(dest string, options ...SendStreamerOption) (s
 
 	sender := NewSendStreamer(s.filechannel, fi, dest, options...)
 	return sender, nil
+}
+
+func (s *Sender) NewFileStreamer(dest string, fi os.FileInfo, options ...SendStreamerOption) (streamer *SendStreamer) {
+	return NewSendStreamer(s.filechannel, fi, dest, options...)
 }
 
 func (s *Sender) createFileChannel(name string) (*webrtc.DataChannel, error) {

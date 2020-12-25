@@ -56,6 +56,9 @@ func (b *BandwithCalc) Total(munit int64) float64 {
 }
 
 func (b *BandwithCalc) Percentage() int64 {
+	if b.n == 0 {
+		return 0
+	}
 	bandwidth := float64(b.n) / float64(b.size) * 100
 	return int64(bandwidth)
 }

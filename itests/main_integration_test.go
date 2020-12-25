@@ -3,12 +3,13 @@
 package itests
 
 import (
+	"context"
 	"fmt"
 	"io/ioutil"
 	"os"
 	"path"
 	"path/filepath"
-	"sharef/streamer"
+	"sharef/watcher"
 	"strings"
 	"syscall"
 	"testing"
@@ -97,7 +98,17 @@ func (suite *SuiteStreamFile) SetupTest() {
 	sendfile := suite.Sendfile
 	//Send our file
 	t.Log("Starting sending file", sendfile)
-	err := sen.SendFile(sendfile, streamer.WithStreamChanges())
+	fi, err := os.Stat(sendfile)
+	require.Nil(t, err)
+
+	//Start listener
+	w := watcher.New(sendfile, fi)
+	ctx := context.Background()
+	sender := sen.NewFileStreamer(sendfile, fi)
+	err = sender.Stream(ctx)
+	go w.ListenChangeFile(ctx, func(fi os.FileInfo, path string) error {
+		return sender.SubStream(fi, path)
+	})
 	require.Nil(t, err)
 }
 
@@ -231,7 +242,9 @@ func (suite *SuiteStreamDir) SetupTest() {
 
 	//Create some existing files
 	sendfile := filepath.Join(senddir, "testfile.txt")
-	ioutil.WriteFile(sendfile, []byte("Here some lines\nThis should be second line\nThirdline"), 0644)
+	err := ioutil.WriteFile(sendfile, []byte("Here some lines\nThis should be second line\nThirdline"), 0644)
+	require.Nil(t, err)
+
 }
 
 func (suite *SuiteStreamDir) TestSendingDirAndChanges() {
@@ -244,8 +257,21 @@ func (suite *SuiteStreamDir) TestSendingDirAndChanges() {
 
 	//Send our file
 	t.Log("Starting sending file", senddir)
-	err := sen.SendFile(senddir, streamer.WithStreamChanges())
+	// err := sen.SendFile(senddir)
+	// require.Nil(t, err)
+
+	fi, err := os.Stat(senddir)
 	require.Nil(t, err)
+
+	w := watcher.New(senddir, fi)
+	ctx := context.Background()
+
+	sender := sen.NewFileStreamer(senddir, fi)
+	sender.Stream(context.Background())
+
+	go w.ListenChangeFile(ctx, func(fin os.FileInfo, path string) error {
+		return sender.SubStream(fin, path)
+	})
 
 	//Compare data received
 	sendfile := filepath.Join(senddir, "testfile.txt")

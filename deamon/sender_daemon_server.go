@@ -43,7 +43,7 @@ func (s *SenderDaemonServer) SendFile(req *api.SendFileRequest, stream api.Sende
 	reader, writer := io.Pipe()
 	streamer.SetOutput(writer)
 
-	streamer.Stream()
+	streamer.AsyncStream()
 	// defer streamer.Close()
 	for {
 		select {

@@ -1,6 +1,7 @@
 package cli
 
 import (
+	"context"
 	"flag"
 	"fmt"
 	"os"
@@ -9,6 +10,7 @@ import (
 	"sharef/deamon"
 	"sharef/errx"
 	"sharef/streamer"
+	"sharef/watcher"
 	"sync"
 	"time"
 
@@ -106,29 +108,28 @@ func sendFiles(args []string, keepsync bool) error {
 	//Stream files
 	fmt.Println("")
 	fmt.Println("Sending files:")
-	wg := sync.WaitGroup{}
 
-	var streamopt []streamer.SendStreamerOption
-	if keepsync {
-		streamopt = append(streamopt, streamer.WithStreamChanges())
-	}
-
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
 	for _, file := range args {
-		wg.Add(1)
-		// s.SendFile(file, streamopt...)
-		streamer, err := s.InitFileStreamer(file, streamopt...)
+		fi, err := os.Stat(file)
 		if err != nil {
-			return errx.Wrapf(err, "Sending %s file failed", file)
+			return err
 		}
 
-		if err := streamer.Stream(); err != nil {
+		streamer := s.NewFileStreamer(file, fi)
+
+		if keepsync {
+			w := watcher.New(file, fi)
+			go w.ListenChangeFile(ctx, func(fin os.FileInfo, path string) error {
+				return streamer.SubStream(fin, path)
+			})
+		}
+
+		if err := streamer.Stream(ctx); err != nil {
 			return errx.Wrapf(err, "Streaming %s file failed", file)
 		}
-
-		<-streamer.DoneSending
-		go sendStreamerWait(streamer, &wg)
 	}
-	wg.Wait()
 	return nil
 }
 
@@ -136,3 +137,82 @@ func sendStreamerWait(s *streamer.SendStreamer, wg *sync.WaitGroup) {
 	<-s.Done
 	wg.Done()
 }
+
+// type SendStreamer struct {
+// 	log        logrus.FieldLogger
+// 	streamInfo os.FileInfo
+// 	streamPath string
+// }
+
+// func NewSendStreamer(channel *webrtc.DataChannel, streamInfo os.FileInfo, path string) *SendStreamer {
+// 	r := &SendStreamer{
+// 		log:        logrus.WithField("prefix", "sendstream"),
+// 		streamInfo: streamInfo,
+// 		streamPath: filepath.Clean(path),
+// 	}
+
+// 	return r
+// }
+
+// func (s *SendStreamer) listenChangeFile(streamInfo os.FileInfo) {
+// 	watcher, err := fsnotify.NewWatcher()
+// 	if err != nil {
+// 		s.log.Println("ERROR", err)
+// 		return
+// 	}
+// 	defer watcher.Close()
+
+// 	if err := watcher.Add(path); err != nil {
+// 		s.log.Info("ERROR ", err)
+// 	}
+
+// 	for {
+// 		select {
+// 		// watch for events
+// 		case event := <-watcher.Events:
+// 			s.log.Infof("EVENT! %s\n", event.String())
+// 			s.checkFileChanges(event, watcher)
+
+// 			// watch for errors
+// 		case err := <-watcher.Errors:
+// 			s.log.Info("ERROR ", err)
+// 		}
+// 	}
+// }
+
+// func (s *SendStreamer) checkFileChanges(event fsnotify.Event, watcher *fsnotify.Watcher, streamInfo os.FileInfo) {
+// 	// if s.bytesWritten < s.streamInfo.Size {
+// 	// 	return
+// 	// }
+
+// 	switch {
+// 	case event.Op&fsnotify.Write == fsnotify.Write:
+// 	case event.Op&fsnotify.Create == fsnotify.Create:
+// 		if !s.streamInfo.IsDir() { //Only streaming dir we follow create changes
+// 			return
+// 		}
+// 	default:
+// 		return
+// 	}
+
+// 	path := event.Name
+
+// 	fi, err := os.Stat(path)
+// 	if err != nil {
+// 		s.log.Error(err)
+// 		return
+// 	}
+
+// 	s.log.WithField("path", path).Info("Sending file changes")
+// 	if err := s.processFile(fi, path); err != nil {
+// 		s.log.Error(err)
+// 		return
+// 	}
+
+// 	if fi.IsDir() {
+// 		//Add tracking changes for this dir
+// 		if err := watcher.Add(path); err != nil {
+// 			s.log.Error(err)
+// 		}
+// 	}
+// }

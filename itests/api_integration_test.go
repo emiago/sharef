@@ -3,6 +3,7 @@
 package itests
 
 import (
+	"context"
 	"fmt"
 	"io/ioutil"
 	"path"
@@ -45,7 +46,10 @@ func (suite *SuiteApiSender) TestReceiveFile() {
 
 	//Send our file
 	t.Log("Starting sending file", sendfile)
-	err := sen.SendFile(sendfile)
+	sender, err := sen.InitFileStreamer(sendfile)
+	require.Nil(t, err)
+
+	err = sender.Stream(context.Background())
 	require.Nil(t, err)
 
 	//Compare data received
