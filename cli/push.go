@@ -117,7 +117,7 @@ func sendFiles(args []string, keepsync bool) error {
 			return err
 		}
 
-		streamer := s.NewFileStreamer(file, fi)
+		streamer := s.NewFileStreamer(file)
 
 		if keepsync {
 			w := watcher.New(file, fi)
@@ -126,7 +126,7 @@ func sendFiles(args []string, keepsync bool) error {
 			})
 		}
 
-		if err := streamer.Stream(ctx); err != nil {
+		if err := streamer.Stream(ctx, fi); err != nil {
 			return errx.Wrapf(err, "Streaming %s file failed", file)
 		}
 	}

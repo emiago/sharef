@@ -17,6 +17,10 @@ type StreamFile struct {
 	// sys     syscall.Stat_t
 }
 
+func (s *StreamFile) IsDir() bool {
+	return s.Mode.IsDir()
+}
+
 func StreamFile2FileInfo(fi StreamFile) os.FileInfo {
 	return &FileStat{
 		name:    fi.Name,

@@ -6,6 +6,7 @@ import (
 	"context"
 	"fmt"
 	"io/ioutil"
+	"os"
 	"path"
 	"testing"
 	"time"
@@ -45,11 +46,13 @@ func (suite *SuiteApiSender) TestReceiveFile() {
 	ioutil.WriteFile(sendfile, []byte("Hello My Friend"), 0644)
 
 	//Send our file
-	t.Log("Starting sending file", sendfile)
-	sender, err := sen.InitFileStreamer(sendfile)
+	fi, err := os.Stat(sendfile)
 	require.Nil(t, err)
 
-	err = sender.Stream(context.Background())
+	t.Log("Starting sending file", sendfile)
+	sender := sen.NewFileStreamer(sendfile)
+
+	err = sender.Stream(context.Background(), fi)
 	require.Nil(t, err)
 
 	//Compare data received
@@ -62,7 +65,7 @@ func (suite *SuiteApiSender) TestReceiveFile() {
 }
 
 func TestApiSenderSendFile(t *testing.T) {
-	suite.Run(t, &SuiteStreamFile{
+	suite.Run(t, &SuiteApiSender{
 		Sendfile:  "./internal/send/testfile.txt",
 		OutputDir: "./internal/received",
 	})

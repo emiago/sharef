@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"net"
+	"os"
 	"sharef/api"
 	"sharef/streamer"
 
@@ -33,17 +34,19 @@ func (*SenderDaemonServer) Hello(context.Context, *api.HelloRequest) (*api.Hello
 	return &api.HelloReply{}, nil
 }
 func (s *SenderDaemonServer) SendFile(req *api.SendFileRequest, stream api.Sender_SendFileServer) error {
-	streamer, err := s.sender.InitFileStreamer(req.Filename)
+	fi, err := os.Stat(req.Filename)
 	if err != nil {
 		return status.Errorf(codes.Internal, err.Error())
 	}
+
+	streamer := s.sender.NewFileStreamer(req.Filename)
 
 	// reader := bytes.NewBuffer([]byte{})
 	// writer := bytes.NewBuffer([]byte{})
 	reader, writer := io.Pipe()
 	streamer.SetOutput(writer)
 
-	streamer.AsyncStream()
+	streamer.AsyncStream(fi)
 	// defer streamer.Close()
 	for {
 		select {

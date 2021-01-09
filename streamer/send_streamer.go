@@ -25,8 +25,6 @@ type SendStreamer struct {
 	ReadFileStreamer
 
 	channel    *webrtc.DataChannel
-	stream     *os.File
-	streamInfo os.FileInfo
 	streamPath string
 	// sendFrameCb      func(t int, f Framer) (n uint64, err error)
 	openFileReaderCb func(path string) (io.ReadCloser, error)
@@ -49,11 +47,11 @@ func openFileReader(path string) (io.ReadCloser, error) {
 	return file, err
 }
 
-func NewSendStreamer(channel *webrtc.DataChannel, streamInfo os.FileInfo, path string, options ...SendStreamerOption) *SendStreamer {
+// func NewSendStreamer(channel *webrtc.DataChannel, streamInfo os.FileInfo, rootpath string, options ...SendStreamerOption) *SendStreamer {
+func NewSendStreamer(channel *webrtc.DataChannel, rootpath string, options ...SendStreamerOption) *SendStreamer {
 	r := &SendStreamer{
 		channel:     channel,
-		streamInfo:  streamInfo,
-		streamPath:  filepath.Clean(path),
+		streamPath:  filepath.Clean(rootpath),
 		frameCh:     make(chan Framer),
 		log:         logrus.WithField("prefix", "sendstream"),
 		output:      os.Stdout,
@@ -77,14 +75,24 @@ func (s *SendStreamer) SetOutput(w io.Writer) {
 	s.output = w
 }
 
-func (s *SendStreamer) AsyncStream() error {
-	s.channel.OnOpen(s.OnOpen) //On open we streaming will start
+func (s *SendStreamer) AsyncStream(streamInfo os.FileInfo) error {
 	s.channel.OnMessage(s.OnMessage)
 	s.channel.OnClose(s.OnClose)
+
+	s.channel.OnOpen(func() {
+		s.log.Infof("Send receive streamer open")
+
+		if err := s.SubStream(streamInfo, s.streamPath); err != nil {
+			s.log.WithError(err).Error("Failed to process file ", s.streamPath)
+		}
+		// close(s.DoneSending)
+		close(s.Done)
+	}) //On open we streaming will start
+
 	return nil
 }
 
-func (s *SendStreamer) Stream(ctx context.Context) error {
+func (s *SendStreamer) Stream(ctx context.Context, streamInfo os.FileInfo) error {
 	// s.channel.OnOpen(s.OnOpen) //On open we streaming will start
 	s.channel.OnMessage(s.OnMessage)
 	s.channel.OnClose(s.OnClose)
@@ -100,22 +108,12 @@ func (s *SendStreamer) Stream(ctx context.Context) error {
 	case <-opened:
 	}
 
-	err := s.SubStream(s.streamInfo, s.streamPath)
+	err := s.SubStream(streamInfo, s.streamPath)
 	return err
 }
 
 func (s *SendStreamer) OnClose() {
 	s.log.Infof("Send Streamer %s closed", s.channel.Label())
-}
-
-func (s *SendStreamer) OnOpen() {
-	s.log.Infof("Send receive streamer open")
-
-	if err := s.SubStream(s.streamInfo, s.streamPath); err != nil {
-		s.log.WithError(err).Error("Failed to process file ", s.streamPath)
-	}
-	// close(s.DoneSending)
-	close(s.Done)
 }
 
 func (s *SendStreamer) SubStream(streamInfo os.FileInfo, path string) error {
@@ -184,20 +182,7 @@ func (s *SendStreamer) processFileStream(fi os.FileInfo, path string) error {
 
 	info := s.prepareNewStream(fi, path)
 
-	if _, err := s.postFrame(FRAME_NEWSTREAM, &FrameNewStream{Info: info}); err != nil {
-		return errx.Wrapf(err, "Fail to post frame for file %s", path)
-	}
-
-	if fi.IsDir() {
-		//No need to stream dir
-		return nil
-	}
-
-	if err := s.streamFile(file, fi); err != nil {
-		return errx.Wrapf(err, "Fail to stream file %s", path)
-	}
-
-	return nil
+	return s.StreamReader(file, info)
 }
 
 func (s *SendStreamer) prepareNewStream(fi os.FileInfo, path string) StreamFile {
@@ -222,11 +207,29 @@ func (s *SendStreamer) prepareNewStream(fi os.FileInfo, path string) StreamFile 
 	return info
 }
 
-func (s *SendStreamer) streamFile(file io.Reader, fi os.FileInfo) error {
-	s.log.Infof("Starting stream name=%s", fi.Name())
+// StreamReader allows to stream any io Reader.
+// Consider info.Path will be used to create same path on received side
+func (s *SendStreamer) StreamReader(file io.Reader, info StreamFile) error {
+	if _, err := s.postFrame(FRAME_NEWSTREAM, &FrameNewStream{Info: info}); err != nil {
+		return errx.Wrapf(err, "Fail to post frame for file %s", info.Path)
+	}
+
+	if info.IsDir() {
+		//No need to stream dir
+		return nil
+	}
+
+	if err := s.streamReader(file, info.Size, info.Name); err != nil {
+		return errx.Wrapf(err, "Fail to stream file %s", info.Path)
+	}
+	return nil
+}
+
+func (s *SendStreamer) streamReader(file io.Reader, size int64, fname string) error {
+	s.log.Infof("Starting stream name=%s", fname)
 
 	data := make([]byte, SEND_BUFFER_SIZE)
-	b := rpc.NewBandwithCalc(uint64(fi.Size()))
+	b := rpc.NewBandwithCalc(uint64(size))
 	// fmt.Fprintln(s.output, "")
 
 	bufflock := make(chan struct{})
@@ -256,11 +259,11 @@ func (s *SendStreamer) streamFile(file io.Reader, fi os.FileInfo) error {
 		}
 
 		b.Add(uint64(n))
-		b.FprintOnSecond(s.output, fi.Name())
+		b.FprintOnSecond(s.output, fname)
 	}
 
-	fmt.Fprintln(s.output, b.Sprint(fi.Name())) //Do last print
-	s.log.Infof("File %s is successfully sent bytes %f", fi.Name(), b.Total(1))
+	fmt.Fprintln(s.output, b.Sprint(fname)) //Do last print
+	s.log.Infof("File %s is successfully sent bytes %f", fname, b.Total(1))
 	return nil
 }
 

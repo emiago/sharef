@@ -104,8 +104,8 @@ func (suite *SuiteStreamFile) SetupTest() {
 	//Start listener
 	w := watcher.New(sendfile, fi)
 	ctx := context.Background()
-	sender := sen.NewFileStreamer(sendfile, fi)
-	err = sender.Stream(ctx)
+	sender := sen.NewFileStreamer(sendfile)
+	err = sender.Stream(ctx, fi)
 	go w.ListenChangeFile(ctx, func(fi os.FileInfo, path string) error {
 		return sender.SubStream(fi, path)
 	})
@@ -266,8 +266,8 @@ func (suite *SuiteStreamDir) TestSendingDirAndChanges() {
 	w := watcher.New(senddir, fi)
 	ctx := context.Background()
 
-	sender := sen.NewFileStreamer(senddir, fi)
-	sender.Stream(context.Background())
+	sender := sen.NewFileStreamer(senddir)
+	sender.Stream(context.Background(), fi)
 
 	go w.ListenChangeFile(ctx, func(fin os.FileInfo, path string) error {
 		return sender.SubStream(fin, path)

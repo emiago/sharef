@@ -96,30 +96,32 @@ func (s *Sender) DialWithAnswerFirst() error {
 // }
 
 func (s *Sender) SendFile(dest string, options ...SendStreamerOption) (err error) {
-	sender, err := s.InitFileStreamer(dest, options...)
+	fi, err := os.Stat(dest)
 	if err != nil {
 		return err
 	}
 
-	if err := sender.Stream(context.Background()); err != nil {
+	sender := s.NewFileStreamer(dest, options...)
+
+	if err := sender.Stream(context.Background(), fi); err != nil {
 		return err
 	}
 
 	return err
 }
 
-func (s *Sender) InitFileStreamer(dest string, options ...SendStreamerOption) (streamer *SendStreamer, err error) {
-	fi, err := os.Stat(dest)
-	if err != nil {
-		return nil, err
-	}
+// func (s *Sender) InitFileStreamer(dest string, options ...SendStreamerOption) (streamer *SendStreamer, err error) {
+// 	fi, err := os.Stat(dest)
+// 	if err != nil {
+// 		return nil, err
+// 	}
 
-	sender := NewSendStreamer(s.filechannel, fi, dest, options...)
-	return sender, nil
-}
+// 	sender := NewSendStreamer(s.filechannel, fi, dest, options...)
+// 	return sender, nil
+// }
 
-func (s *Sender) NewFileStreamer(dest string, fi os.FileInfo, options ...SendStreamerOption) (streamer *SendStreamer) {
-	return NewSendStreamer(s.filechannel, fi, dest, options...)
+func (s *Sender) NewFileStreamer(dest string, options ...SendStreamerOption) (streamer *SendStreamer) {
+	return NewSendStreamer(s.filechannel, dest, options...)
 }
 
 func (s *Sender) createFileChannel(name string) (*webrtc.DataChannel, error) {

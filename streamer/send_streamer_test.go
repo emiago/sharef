@@ -36,24 +36,25 @@ func (s *MockReadFileStreamer) ReadDir(path string) ([]os.FileInfo, error) {
 	return s.fakeDir[path], nil
 }
 
-func NewMockSendStreamer(name string, streamInfo os.FileInfo, path string) (*SendStreamer, error) {
+func NewMockSendStreamer(name string, rootpath string) (*SendStreamer, error) {
 	conn, err := webrtc.NewPeerConnection(webrtc.Configuration{})
 	if err != nil {
 		return nil, err
 	}
 
 	dataChannel, err := conn.CreateDataChannel(name, DataChannelInitFileStream())
-	sender := NewSendStreamer(dataChannel, streamInfo, path)
+	sender := NewSendStreamer(dataChannel, rootpath)
 	return sender, nil
 }
 
 func TestNewMockStream(t *testing.T) {
-	_, err := NewMockSendStreamer("test", &FileStat{}, "")
+	_, err := NewMockSendStreamer("test", "")
 	require.Nil(t, err)
 }
 
 func TestSendStreamerPrepareNewStream(t *testing.T) {
-	sender, err := NewMockSendStreamer("test", &FileStat{name: "mydir"}, "/opt/my/some/mydir")
+	// streamInfo := &FileStat{name: "mydir"}
+	sender, err := NewMockSendStreamer("test", "/opt/my/some/mydir")
 	require.Nil(t, err)
 
 	fi := &FileStat{
@@ -77,7 +78,7 @@ func TestSendStreamerStreamfile(t *testing.T) {
 		name: "file.txt",
 	}
 
-	sender, err := NewMockSendStreamer("test", fi, "/opt/file.txt")
+	sender, err := NewMockSendStreamer("test", "/opt/file.txt")
 	require.Nil(t, err)
 
 	mocker := &MockReadFileStreamer{
@@ -88,7 +89,7 @@ func TestSendStreamerStreamfile(t *testing.T) {
 	sender.ReadFileStreamer = mocker
 
 	file, _ := sender.OpenFile("file.txt")
-	err = sender.streamFile(file, fi)
+	err = sender.streamReader(file, fi.Size(), fi.Name())
 	require.Nil(t, err)
 
 	sentFrames := mocker.sentFrames
@@ -109,7 +110,7 @@ func TestSendStreamerProcessFile(t *testing.T) {
 		mode: os.ModeDir,
 	}
 
-	sender, err := NewMockSendStreamer("test", fi, rootpath)
+	sender, err := NewMockSendStreamer("test", rootpath)
 	require.Nil(t, err)
 
 	mocker := &MockReadFileStreamer{
@@ -134,7 +135,7 @@ func TestSendStreamerProcessFile(t *testing.T) {
 		}
 	}()
 
-	err = sender.processFile(sender.streamInfo, sender.streamPath)
+	err = sender.processFile(fi, sender.streamPath)
 	require.Nil(t, err)
 
 	sentFrames := mocker.sentFrames
