@@ -6,7 +6,7 @@ import (
 	"io"
 	"strings"
 
-	"github.com/pion/webrtc/v2"
+	webrtc "github.com/pion/webrtc/v3"
 	log "github.com/sirupsen/logrus"
 )
 
@@ -56,6 +56,8 @@ func (s *Session) CreateConnection(onConnectionStateChange func(connectionState 
 				URLs: s.stunServers,
 			},
 		},
+		BundlePolicy: webrtc.BundlePolicyBalanced,
+		// SDPSemantics: webrtc.SDPSemanticsPlanB,
 	}
 
 	// Create a new RTCPeerConnection
@@ -65,7 +67,6 @@ func (s *Session) CreateConnection(onConnectionStateChange func(connectionState 
 	}
 	s.peerConnection = peerConnection
 	peerConnection.OnICEConnectionStateChange(onConnectionStateChange)
-
 	return nil
 }
 
@@ -83,6 +84,8 @@ func (s *Session) ReadSDP() error {
 		return err
 	}
 
+	fmt.Println("GOT SDP", sdp)
+
 	return s.peerConnection.SetRemoteDescription(sdp)
 }
 
@@ -94,33 +97,52 @@ func (s *Session) OnDataChannel(handler func(d *webrtc.DataChannel)) {
 // CreateAnswer set the local description and print the answer SDP
 func (s *Session) CreateAnswer() error {
 	// Create an answer
+	// s.peerConnection.AddTransceiverFromKind(webrtc.RTPCodecType(webrtc.RTPTransceiverDirectionSendrecv))
+
 	answer, err := s.peerConnection.CreateAnswer(nil)
 	if err != nil {
 		return err
 	}
 
-	return s.createSessionDescription(answer, SDP_ANSWER_PROMPT)
+	if err := s.createSessionDescription(answer, SDP_ANSWER_PROMPT); err != nil {
+		return err
+	}
+
+	return nil
 }
 
 // CreateOffer set the local description and print the offer SDP
 func (s *Session) CreateOffer() error {
 	// Create an offer
+	// s.peerConnection.AddTransceiverFromKind(webrtc.RTPCodecType(webrtc.RTPTransceiverDirectionSendrecv))
+	// s.peerConnection.AddTransceiverFromKind(webrtc.RTPCodecType(webrtc.))
+
 	offer, err := s.peerConnection.CreateOffer(nil)
 	if err != nil {
 		return err
 	}
-	return s.createSessionDescription(offer, SDP_OFFER_PROMPT)
+
+	if err := s.createSessionDescription(offer, SDP_OFFER_PROMPT); err != nil {
+		return err
+	}
+
+	return nil
 }
 
 // createSessionDescription set the local description and print the SDP
 func (s *Session) createSessionDescription(desc webrtc.SessionDescription, prompt string) error {
 	// Sets the LocalDescription, and starts our UDP listeners
+	// Create channel that is blocked until ICE Gathering is complete
+	gatherComplete := webrtc.GatheringCompletePromise(s.peerConnection)
+
 	if err := s.peerConnection.SetLocalDescription(desc); err != nil {
 		return err
 	}
 
-	// desc.SDP = StripSDP(desc.SDP)
-	// logrus.Infof("SEND \n %v+", desc.SDP)
+	<-gatherComplete
+
+	desc = *s.peerConnection.LocalDescription()
+	log.Debugf("Gather ICE completed %s\n", desc.SDP)
 
 	// writer the SDP in base64 so we can paste it in browser
 	resp, err := Encode(desc)

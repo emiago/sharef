@@ -7,7 +7,7 @@ import (
 	"path/filepath"
 	"sharef/rpc"
 
-	"github.com/pion/webrtc/v2"
+	webrtc "github.com/pion/webrtc/v3"
 	"github.com/sirupsen/logrus"
 )
 
@@ -27,7 +27,7 @@ type ReceiveStreamer struct {
 }
 
 func NewReceiveStreamer(channel *webrtc.DataChannel, outputDir string) *ReceiveStreamer {
-	r := &ReceiveStreamer{
+	s := &ReceiveStreamer{
 		channel: channel,
 		// stream:     stream,
 		// streamInfo: streamInfo,
@@ -37,9 +37,8 @@ func NewReceiveStreamer(channel *webrtc.DataChannel, outputDir string) *ReceiveS
 		Done:      make(chan struct{}),
 	}
 
-	r.WriteFileStreamer = &WriteFileStreamerWebrtc{channel}
-
-	return r
+	s.WriteFileStreamer = &WriteFileStreamerWebrtc{channel}
+	return s
 }
 
 func (s *ReceiveStreamer) Stream() {
@@ -64,7 +63,7 @@ func (s *ReceiveStreamer) OnMessage(msg webrtc.DataChannelMessage) {
 		s.log.Error(err)
 		return
 	}
-	// s.log.Infof("Receiver on message called %d", f.GetT())
+	s.log.Debugf("Receiver on message called %d", f.GetT())
 
 	switch m := f.(type) {
 	case *FrameData:

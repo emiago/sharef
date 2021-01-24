@@ -1,6 +1,8 @@
 package streamer
 
-import "github.com/pion/webrtc/v2"
+import (
+	webrtc "github.com/pion/webrtc/v3"
+)
 
 func DataChannelInitFileStream() *webrtc.DataChannelInit {
 	ordered := true

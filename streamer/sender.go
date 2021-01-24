@@ -2,11 +2,14 @@ package streamer
 
 import (
 	"context"
+	"fmt"
 	"os"
+	"sync"
+	"time"
 
-	"github.com/pion/webrtc/v2"
+	webrtc "github.com/pion/webrtc/v3"
+
 	"github.com/sirupsen/logrus"
-	log "github.com/sirupsen/logrus"
 )
 
 const (
@@ -36,64 +39,36 @@ func NewSender(s Session) *Sender {
 
 // Start the connection and the file transfer
 func (s *Sender) Dial() error {
-	if err := s.CreateConnection(s.onConnectionStateChange()); err != nil {
+	connected := make(chan struct{})
+
+	if err := s.CreateConnection(s.onConnectionStateChange(connected)); err != nil {
 		return err
 	}
 
-	// if err := s.createRequestChannel(); err != nil {
-	// 	return err
-	// }
+	channel, err := s.createFileChannel("filestream")
+	if err != nil {
+		return err
+	}
 
 	if err := s.CreateOffer(); err != nil {
 		return err
 	}
 
-	// fmt.Fprintln(s.writer) //Add one break
 	if err := s.ReadSDP(); err != nil {
 		return err
 	}
 
-	channel, err := s.createFileChannel("filestream")
-	if err != nil {
-		return err
+	s.log.Debug("Waiting for connection before sending")
+	select {
+	case <-connected:
+	case <-time.After(10 * time.Second):
+		return fmt.Errorf("Fail to get connected")
 	}
+
 	s.filechannel = channel
 
 	return nil
 }
-
-func (s *Sender) DialWithAnswerFirst() error {
-	if err := s.CreateConnection(s.onConnectionStateChange()); err != nil {
-		return err
-	}
-
-	if err := s.ReadSDP(); err != nil {
-		s.log.Errorln(err)
-		return err
-	}
-
-	if err := s.CreateAnswer(); err != nil {
-		s.log.Errorln(err)
-		return err
-	}
-
-	channel, err := s.createFileChannel("filestream")
-	if err != nil {
-		return err
-	}
-	s.filechannel = channel
-
-	return nil
-}
-
-// func (s *Sender) StreamAudio(dest string) (err error) {
-// 	codec := webrtc.NewRTPPCMACodec(webrtc.DefaultPayloadTypePCMA, 8000)
-// 	track, _ := webrtc.NewTrack(webrtc.DefaultPayloadTypePCMA, 1, "audio", "test", codec)
-// 	s.peerConnection.AddTrack(track)
-// 	// rtp.NewPacketizer()
-// 	// track.WriteRTP()
-// 	// return s.SendFileWithOptions(dest, nil)
-// }
 
 func (s *Sender) SendFile(dest string, options ...SendStreamerOption) (err error) {
 	fi, err := os.Stat(dest)
@@ -110,16 +85,6 @@ func (s *Sender) SendFile(dest string, options ...SendStreamerOption) (err error
 	return err
 }
 
-// func (s *Sender) InitFileStreamer(dest string, options ...SendStreamerOption) (streamer *SendStreamer, err error) {
-// 	fi, err := os.Stat(dest)
-// 	if err != nil {
-// 		return nil, err
-// 	}
-
-// 	sender := NewSendStreamer(s.filechannel, fi, dest, options...)
-// 	return sender, nil
-// }
-
 func (s *Sender) NewFileStreamer(dest string, options ...SendStreamerOption) (streamer *SendStreamer) {
 	return NewSendStreamer(s.filechannel, dest, options...)
 }
@@ -129,15 +94,14 @@ func (s *Sender) createFileChannel(name string) (*webrtc.DataChannel, error) {
 	return dataChannel, err
 }
 
-func (s *Sender) onConnectionStateChange() func(connectionState webrtc.ICEConnectionState) {
-	return func(connectionState webrtc.ICEConnectionState) {
-		log.Infof("ICE Connection State has changed: %s\n", connectionState.String())
-		// if connectionState == webrtc.ICEConnectionStateDisconnected {
-		// }
+func (s *Sender) onConnectionStateChange(connected chan struct{}) func(connectionState webrtc.ICEConnectionState) {
+	once := &sync.Once{}
+	return func(sig webrtc.ICEConnectionState) {
+		s.log.Debug("ICE STATE: ", sig.String())
+		if sig == webrtc.ICEConnectionStateConnected {
+			once.Do(func() {
+				close(connected)
+			})
+		}
 	}
 }
-
-// func (s *Sender) Close() error {
-// 	err := s.peerConnection.Close()
-// 	return err
-// }

@@ -12,7 +12,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/pion/webrtc/v2"
+	webrtc "github.com/pion/webrtc/v3"
 	"github.com/sirupsen/logrus"
 )
 
@@ -93,7 +93,23 @@ func (s *SendStreamer) AsyncStream(streamInfo os.FileInfo) error {
 }
 
 func (s *SendStreamer) Stream(ctx context.Context, streamInfo os.FileInfo) error {
-	// s.channel.OnOpen(s.OnOpen) //On open we streaming will start
+	if !s.openChannel(ctx) {
+		return fmt.Errorf("Channel not opened, or it too early exit")
+	}
+	err := s.SubStream(streamInfo, s.streamPath)
+	return err
+}
+
+// StreamReader is more generic function that can stream any io reader as file on other side
+func (s *SendStreamer) StreamReader(ctx context.Context, reader io.Reader, info StreamFile) error {
+	if !s.openChannel(ctx) {
+		return fmt.Errorf("Channel not opened, or it too early exit")
+	}
+	err := s.processNewStream(reader, info)
+	return err
+}
+
+func (s *SendStreamer) openChannel(ctx context.Context) bool {
 	s.channel.OnMessage(s.OnMessage)
 	s.channel.OnClose(s.OnClose)
 
@@ -104,12 +120,10 @@ func (s *SendStreamer) Stream(ctx context.Context, streamInfo os.FileInfo) error
 
 	select {
 	case <-ctx.Done():
-		return nil
 	case <-opened:
+		return true
 	}
-
-	err := s.SubStream(streamInfo, s.streamPath)
-	return err
+	return false
 }
 
 func (s *SendStreamer) OnClose() {
@@ -182,7 +196,7 @@ func (s *SendStreamer) processFileStream(fi os.FileInfo, path string) error {
 
 	info := s.prepareNewStream(fi, path)
 
-	return s.StreamReader(file, info)
+	return s.processNewStream(file, info)
 }
 
 func (s *SendStreamer) prepareNewStream(fi os.FileInfo, path string) StreamFile {
@@ -207,9 +221,7 @@ func (s *SendStreamer) prepareNewStream(fi os.FileInfo, path string) StreamFile 
 	return info
 }
 
-// StreamReader allows to stream any io Reader.
-// Consider info.Path will be used to create same path on received side
-func (s *SendStreamer) StreamReader(file io.Reader, info StreamFile) error {
+func (s *SendStreamer) processNewStream(file io.Reader, info StreamFile) error {
 	if _, err := s.postFrame(FRAME_NEWSTREAM, &FrameNewStream{Info: info}); err != nil {
 		return errx.Wrapf(err, "Fail to post frame for file %s", info.Path)
 	}
@@ -277,7 +289,11 @@ func (s *SendStreamer) OnMessage(msg webrtc.DataChannelMessage) {
 	}
 	s.log.Infof("Sender on message called %d", f.GetT())
 
-	s.frameCh <- f
+	select {
+	case s.frameCh <- f:
+	default:
+		s.log.Errorf("Frame missed %s", f.GetT())
+	}
 }
 
 func (s *SendStreamer) postFrame(t int, f Framer) (Framer, error) {
@@ -285,7 +301,12 @@ func (s *SendStreamer) postFrame(t int, f Framer) (Framer, error) {
 		return nil, err
 	}
 
-	res := <-s.frameCh
+	var res Framer
+	select {
+	case res = <-s.frameCh:
+	case <-time.After(10 * time.Second):
+		return nil, fmt.Errorf("Timeout")
+	}
 
 	if res.GetT() == FRAME_ERROR {
 		frame := res.(*FrameError)

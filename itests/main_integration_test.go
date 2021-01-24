@@ -3,12 +3,14 @@
 package itests
 
 import (
+	"bytes"
 	"context"
 	"fmt"
 	"io/ioutil"
 	"os"
 	"path"
 	"path/filepath"
+	"sharef/streamer"
 	"sharef/watcher"
 	"strings"
 	"syscall"
@@ -69,6 +71,33 @@ func (suite *SuiteSendFile) TestReceiveFile() {
 	senddata, err := ioutil.ReadFile(sendfile)
 	require.Nil(t, err)
 
+	assert.Eventually(t, func() bool {
+		return testFileContentAreSame(t, senddata, outputFile)
+	}, 5*time.Second, 1*time.Second, "File is not received")
+}
+
+func (suite *SuiteSendFile) TestStringReader() {
+	t := suite.T()
+	sen := suite.sender
+	sendfile := suite.Sendfile
+	outputFile := suite.outputFile
+
+	sender := sen.NewFileStreamer(sendfile)
+
+	senddata := []byte("This some of my content\nSome rows\nSome content")
+	readersize := bytes.NewReader(senddata)
+	reader := bytes.NewReader(senddata)
+	fi := streamer.StreamFile{
+		Name:     path.Base(sendfile),
+		Path:     sendfile,
+		FullPath: sendfile,
+		Size:     readersize.Size(),
+		Mode:     os.FileMode(0664),
+		ModTime:  time.Now(),
+	}
+
+	err := sender.StreamReader(context.Background(), reader, fi)
+	require.Nil(t, err)
 	assert.Eventually(t, func() bool {
 		return testFileContentAreSame(t, senddata, outputFile)
 	}, 5*time.Second, 1*time.Second, "File is not received")

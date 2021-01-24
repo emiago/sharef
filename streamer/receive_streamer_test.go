@@ -7,9 +7,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/pion/webrtc/v2"
+	webrtc "github.com/pion/webrtc/v3"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"gotest.tools/assert"
 )
 
 type MyWriteCloser struct {
@@ -128,5 +128,5 @@ func TestReceiveStreamerStreamData(t *testing.T) {
 	receiver.streamFrameData(content)
 
 	assert.Equal(t, mocker.writedata.Len(), len(content))
-	assert.DeepEqual(t, mocker.writedata.Bytes(), content)
+	assert.Equal(t, mocker.writedata.Bytes(), content)
 }
