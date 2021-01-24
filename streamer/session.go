@@ -84,8 +84,6 @@ func (s *Session) ReadSDP() error {
 		return err
 	}
 
-	fmt.Println("GOT SDP", sdp)
-
 	return s.peerConnection.SetRemoteDescription(sdp)
 }
 
