@@ -38,6 +38,8 @@ type SendStreamer struct {
 	//Optional variables
 	output        io.Writer
 	streamChanges bool
+
+	bandwithCalc rpc.StreamBandwithCalculator
 }
 
 type SendStreamerOption func(s *SendStreamer)
@@ -60,6 +62,7 @@ func NewSendStreamer(channel *webrtc.DataChannel, rootpath string, options ...Se
 		wg:          sync.WaitGroup{},
 	}
 
+	r.bandwithCalc = rpc.NewBandwithCalc(r.output)
 	r.channel.SetBufferedAmountLowThreshold(SEND_BUFFER_AMOUNT_LOW_TRESHOLD)
 	// r.sendFrameCb = r.sendFrame         //Neded for mocking
 	r.ReadFileStreamer = &ReadFileStreamerWebrtc{channel}
@@ -241,8 +244,8 @@ func (s *SendStreamer) streamReader(file io.Reader, size int64, fname string) er
 	s.log.Infof("Starting stream name=%s", fname)
 
 	data := make([]byte, SEND_BUFFER_SIZE)
-	b := rpc.NewBandwithCalc(uint64(size))
-	// fmt.Fprintln(s.output, "")
+	b := s.bandwithCalc
+	b.NewStream(fname, uint64(size))
 
 	bufflock := make(chan struct{})
 	s.channel.OnBufferedAmountLow(func() {
@@ -271,11 +274,10 @@ func (s *SendStreamer) streamReader(file io.Reader, size int64, fname string) er
 		}
 
 		b.Add(uint64(n))
-		b.FprintOnSecond(s.output, fname)
 	}
 
-	fmt.Fprintln(s.output, b.Sprint(fname)) //Do last print
-	s.log.Infof("File %s is successfully sent bytes %f", fname, b.Total(1))
+	b.Finish()
+	s.log.Infof("File %s is successfully sent", fname)
 	return nil
 }
 

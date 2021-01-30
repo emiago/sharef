@@ -3,6 +3,7 @@ package rpc
 import (
 	"math"
 	"math/rand"
+	"os"
 	"testing"
 	"time"
 
@@ -15,16 +16,18 @@ func bandwithCalcFakeData(b *BandwithCalc, n uint64, t time.Duration) {
 }
 
 func TestBandWithCalc(t *testing.T) {
-	b := NewBandwithCalc(4096)
+	b := NewBandwithCalc(os.Stdout)
+	b.NewStream("", 4096)
 
 	bandwithCalcFakeData(b, 4096, 1*time.Second)
 	//Lets calculate
-	res := b.CalcIn(KB)
+	res := b.calcIn(KB)
 	assert.Equal(t, math.Round(res), math.Round(4.00))
 }
 
 func TestBandWithLoopCalc(t *testing.T) {
-	b := NewBandwithCalc(0)
+	b := NewBandwithCalc(os.Stdout)
+	b.NewStream("", 0)
 
 	var totalbytes uint64
 	for i := 1; i <= 10; i++ {
@@ -35,7 +38,7 @@ func TestBandWithLoopCalc(t *testing.T) {
 
 		bandwithCalcFakeData(b, nbytes, duration)
 
-		res := b.CalcIn(KB)
+		res := b.calcIn(KB)
 		expected := float64(totalbytes) / float64(KB) / float64(duration.Seconds())
 		assert.Equal(t, math.Round(res), math.Round(expected))
 	}
@@ -45,17 +48,18 @@ func TestBandWithPercentage(t *testing.T) {
 	var third uint64 = 51234
 	var totalbytes uint64 = 3 * third
 
-	b := NewBandwithCalc(totalbytes)
+	b := NewBandwithCalc(os.Stdout)
+	b.NewStream("", totalbytes)
 
 	b.Add(third)
-	res := b.Percentage()
+	res := b.percentage()
 	assert.Equal(t, res, int64(33), "Not 33%")
 
 	b.Add(third)
-	res = b.Percentage()
+	res = b.percentage()
 	assert.Equal(t, res, int64(66), "Not 66%")
 
 	b.Add(third)
-	res = b.Percentage()
+	res = b.percentage()
 	assert.Equal(t, res, int64(100), "Not 100%")
 }

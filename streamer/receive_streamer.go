@@ -1,7 +1,6 @@
 package streamer
 
 import (
-	"fmt"
 	"io"
 	"os"
 	"path/filepath"
@@ -14,16 +13,17 @@ import (
 type ReceiveStreamer struct {
 	WriteFileStreamer
 
-	channel        *webrtc.DataChannel
-	stream         io.WriteCloser
-	streamInfo     StreamFile
-	streamBandwith *rpc.BandwithCalc
+	channel       *webrtc.DataChannel
+	stream        io.WriteCloser
+	streamInfo    StreamFile
+	bandwidthCalc rpc.StreamBandwithCalculator
 
 	bytesWritten int64
 	log          logrus.FieldLogger
 	outputDir    string
 	output       io.Writer
-	Done         chan struct{}
+
+	Done chan struct{}
 }
 
 func NewReceiveStreamer(channel *webrtc.DataChannel, outputDir string) *ReceiveStreamer {
@@ -37,6 +37,7 @@ func NewReceiveStreamer(channel *webrtc.DataChannel, outputDir string) *ReceiveS
 		Done:      make(chan struct{}),
 	}
 
+	s.bandwidthCalc = rpc.NewBandwithCalc(s.output)
 	s.WriteFileStreamer = &WriteFileStreamerWebrtc{channel}
 	return s
 }
@@ -63,13 +64,13 @@ func (s *ReceiveStreamer) OnMessage(msg webrtc.DataChannelMessage) {
 		s.log.Error(err)
 		return
 	}
-	s.log.Debugf("Receiver on message called %d", f.GetT())
 
 	switch m := f.(type) {
 	case *FrameData:
 		s.streamFrameData(m.Data)
 		return
 	case *FrameNewStream:
+		s.log.WithField("name", m.Info.Name).Debug("Receiver new stream")
 		if !s.isCurrentStreamSynced() {
 			s.SendFrame(FRAME_ERROR, &FrameError{Err: "Current Stream not synced"})
 			return
@@ -87,7 +88,7 @@ func (s *ReceiveStreamer) OnMessage(msg webrtc.DataChannelMessage) {
 func (s *ReceiveStreamer) streamFrameData(data []byte) {
 	n, err := s.stream.Write(data)
 	s.bytesWritten += int64(n)
-	b := s.streamBandwith
+	b := s.bandwidthCalc
 
 	if err != nil {
 		s.log.Errorln(err)
@@ -95,10 +96,9 @@ func (s *ReceiveStreamer) streamFrameData(data []byte) {
 	}
 
 	b.Add(uint64(n))
-	b.FprintOnSecond(s.output, s.streamInfo.Name)
 
 	if s.bytesWritten >= s.streamInfo.Size {
-		fmt.Fprintln(s.output, b.Sprint(s.streamInfo.Name)) //Do last print
+		b.Finish()
 	}
 }
 
@@ -130,7 +130,7 @@ func (s *ReceiveStreamer) handleNewStreamFrame(info StreamFile) error {
 
 	s.stream = file
 	s.streamInfo = info
-	s.streamBandwith = rpc.NewBandwithCalc(uint64(info.Size))
+	s.bandwidthCalc.NewStream(info.Name, uint64(info.Size))
 	s.bytesWritten = 0
 
 	return nil

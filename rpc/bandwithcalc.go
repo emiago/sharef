@@ -12,19 +12,30 @@ const (
 	GB int64 = 1024 * 1024 * 1024
 )
 
-type BandwithCalc struct {
-	n         uint64 //Bytes
-	start     time.Time
-	lastprint time.Time
-	duration  time.Duration
-	size      uint64
+type StreamBandwithCalculator interface {
+	// NewStream called for each new stream
+	NewStream(streamname string, size uint64)
+	// Add adds amount of bytes read from network
+	Add(n uint64)
+	// Finish is called when stream is closed
+	Finish()
 }
 
-func NewBandwithCalc(size uint64) *BandwithCalc {
+type BandwithCalc struct {
+	n          uint64 //Bytes
+	start      time.Time
+	lastprint  time.Time
+	duration   time.Duration
+	size       uint64
+	w          io.Writer
+	streamname string
+}
+
+func NewBandwithCalc(w io.Writer) *BandwithCalc {
 	b := &BandwithCalc{
 		start:     time.Now(),
 		lastprint: time.Time{},
-		size:      size,
+		w:         w,
 	}
 
 	return b
@@ -34,13 +45,7 @@ func (b *BandwithCalc) ResetTimer() {
 	b.start = time.Now()
 }
 
-//When adding bytes we calculate duration, to be more precise
-func (b *BandwithCalc) Add(n uint64) {
-	b.n += n
-	b.duration = time.Since(b.start)
-}
-
-func (b *BandwithCalc) CalcIn(munit int64) float64 {
+func (b *BandwithCalc) calcIn(munit int64) float64 {
 	duration := b.duration.Seconds()
 	if duration < 1 {
 		duration = 1
@@ -50,12 +55,12 @@ func (b *BandwithCalc) CalcIn(munit int64) float64 {
 	return bandwidth
 }
 
-func (b *BandwithCalc) Total(munit int64) float64 {
+func (b *BandwithCalc) total(munit int64) float64 {
 	bandwidth := float64(b.n) / float64(munit)
 	return bandwidth
 }
 
-func (b *BandwithCalc) Percentage() int64 {
+func (b *BandwithCalc) percentage() int64 {
 	if b.n == 0 {
 		return 0
 	}
@@ -63,28 +68,36 @@ func (b *BandwithCalc) Percentage() int64 {
 	return int64(bandwidth)
 }
 
-func (b *BandwithCalc) FprintOnSecond(w io.Writer, streamname string) {
+func (b *BandwithCalc) NewStream(streamname string, n uint64) {
+	b.start = time.Now()
+	b.lastprint = time.Time{}
+	b.streamname = streamname
+	b.size = n
+}
+
+//When adding bytes we calculate duration, to be more precise
+func (b *BandwithCalc) Add(n uint64) {
+	b.n += n
+	b.duration = time.Since(b.start)
+	b.printOnSecond()
+}
+
+func (b *BandwithCalc) Finish() {
+	b.print()
+}
+
+func (b *BandwithCalc) printOnSecond() {
 	since := time.Since(b.lastprint)
 	if since.Seconds() > 1 { //Printing only if there are changes
-		// speed := b.CalcIn(MB)
-		// total := b.Total(MB)
-		// percentage := b.Percentage()
-		// s := fmt.Sprintf("\033[999D%s     %d%% %.2fMB %.2f MB/s\033[K", streamname, percentage, total, speed)
-		// fmt.Fprint(w, s)
-		fmt.Fprint(w, b.Sprint(streamname))
+		b.print()
 		b.lastprint = time.Now()
 	}
 }
 
-func (b *BandwithCalc) Sprint(streamname string) string {
-	speed := b.CalcIn(MB)
-	total := b.Total(MB)
-	percentage := b.Percentage()
-	s := fmt.Sprintf("\033[999D%s     %d%% %.2fMB %.2f MB/s\033[K", streamname, percentage, total, speed)
-	return s
-}
-
-func (b *BandwithCalc) String() string {
-	res := fmt.Sprintf("%.2f KB/s", b.CalcIn(KB))
-	return res
+func (b *BandwithCalc) print() {
+	speed := b.calcIn(MB)
+	total := b.total(MB)
+	percentage := b.percentage()
+	s := fmt.Sprintf("\033[999D%s     %d%% %.2fMB %.2f MB/s\033[K", b.streamname, percentage, total, speed)
+	fmt.Fprint(b.w, s)
 }
