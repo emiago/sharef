@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"sharef/fsx"
 	"sync"
 	"time"
 
@@ -70,13 +71,13 @@ func (s *Sender) Dial() error {
 	return nil
 }
 
-func (s *Sender) SendFile(dest string, options ...SendStreamerOption) (err error) {
+func (s *Sender) SendFile(dest string) (err error) {
 	fi, err := os.Stat(dest)
 	if err != nil {
 		return err
 	}
 
-	sender := s.NewFileStreamer(dest, options...)
+	sender := s.NewFileStreamer(dest)
 
 	if err := sender.Stream(context.Background(), fi); err != nil {
 		return err
@@ -85,8 +86,12 @@ func (s *Sender) SendFile(dest string, options ...SendStreamerOption) (err error
 	return err
 }
 
-func (s *Sender) NewFileStreamer(dest string, options ...SendStreamerOption) (streamer *SendStreamer) {
-	return NewSendStreamer(s.filechannel, dest, options...)
+func (s *Sender) NewFileStreamer(dest string) (streamer *SendStreamer) {
+	return NewSendStreamer(s.filechannel, dest, fsx.NewFileReader())
+}
+
+func (s *Sender) NewFileStreamerWithReader(dest string, freader ReadFileStreamer) (streamer *SendStreamer) {
+	return NewSendStreamer(s.filechannel, dest, freader)
 }
 
 func (s *Sender) createFileChannel(name string) (*webrtc.DataChannel, error) {

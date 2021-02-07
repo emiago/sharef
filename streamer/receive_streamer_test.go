@@ -40,6 +40,10 @@ func (s *MockWriteFileStreamer) SendFrame(t int, f Framer) (n uint64, err error)
 	return s.readN, nil
 }
 
+func (s *MockWriteFileStreamer) ReadFrame(msg []byte) (f Framer, err error) {
+	return UnmarshalFramer(msg)
+}
+
 func (s *MockWriteFileStreamer) OpenFile(path string, mode os.FileMode) (io.WriteCloser, error) {
 	fi := &FileStat{
 		name:    path,
@@ -67,14 +71,15 @@ func (s *MockWriteFileStreamer) Mkdir(path string, mode os.FileMode) error {
 	return nil
 }
 
-func NewMockReceiveStreamer(name string) (*ReceiveStreamer, error) {
+func NewMockReceiveStreamer(name string, fwriter *MockWriteFileStreamer) (*ReceiveStreamer, error) {
 	conn, err := webrtc.NewPeerConnection(webrtc.Configuration{})
 	if err != nil {
 		return nil, err
 	}
 
 	dataChannel, err := conn.CreateDataChannel(name, DataChannelInitFileStream())
-	sender := NewReceiveStreamer(dataChannel, "")
+	sender := NewReceiveStreamer(dataChannel, "", fwriter)
+	sender.ReadWriteFramer = fwriter
 	return sender, nil
 }
 
@@ -91,13 +96,12 @@ func checkNewStreamFrameSingle(t *testing.T, sf StreamFile, receiver *ReceiveStr
 }
 
 func TestReceiveStreamerNewStreamFrame(t *testing.T) {
-	receiver, err := NewMockReceiveStreamer("test")
-	require.Nil(t, err)
-
 	mocker := &MockWriteFileStreamer{
 		openfiles: make(map[string][]os.FileInfo),
 	}
-	receiver.WriteFileStreamer = mocker
+
+	receiver, err := NewMockReceiveStreamer("test", mocker)
+	require.Nil(t, err)
 
 	t.Run("File", func(t *testing.T) {
 		checkNewStreamFrameSingle(t, StreamFile{Name: "file.txt", Size: int64(512), Mode: 0644}, receiver, mocker)
@@ -109,14 +113,13 @@ func TestReceiveStreamerNewStreamFrame(t *testing.T) {
 }
 
 func TestReceiveStreamerStreamData(t *testing.T) {
-	receiver, err := NewMockReceiveStreamer("test")
-	require.Nil(t, err)
 
 	mocker := &MockWriteFileStreamer{
 		openfiles: make(map[string][]os.FileInfo),
 		writedata: bytes.NewBuffer([]byte{}),
 	}
-	receiver.WriteFileStreamer = mocker
+	receiver, err := NewMockReceiveStreamer("test", mocker)
+	require.Nil(t, err)
 
 	content := []byte("Here some content of file\n Giving some breaks \nNew lines")
 	sf := StreamFile{Name: "file.txt", Size: int64(len(content)), Mode: 0644}

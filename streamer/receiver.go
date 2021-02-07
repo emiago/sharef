@@ -1,6 +1,8 @@
 package streamer
 
 import (
+	"sharef/fsx"
+
 	webrtc "github.com/pion/webrtc/v3"
 	"github.com/sirupsen/logrus"
 	log "github.com/sirupsen/logrus"
@@ -43,7 +45,7 @@ func (s *Receiver) Dial() error {
 	s.OnDataChannel(func(d *webrtc.DataChannel) {
 		s.log.Infof("New DataChannel %s %d\n", d.Label(), d.ID())
 
-		receiver := NewReceiveStreamer(d, s.outputDir)
+		receiver := NewReceiveStreamer(d, s.outputDir, fsx.NewFileWriter())
 		go s.OnNewReceiveStreamer(receiver)
 	})
 

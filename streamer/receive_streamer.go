@@ -4,19 +4,25 @@ import (
 	"io"
 	"os"
 	"path/filepath"
-	"sharef/rpc"
 
 	webrtc "github.com/pion/webrtc/v3"
 	"github.com/sirupsen/logrus"
 )
 
+type WriteFileStreamer interface {
+	// SendFrame(t int, f Framer) (n uint64, err error)
+	OpenFile(path string, mode os.FileMode) (io.WriteCloser, error)
+	Mkdir(path string, mode os.FileMode) (err error)
+}
+
 type ReceiveStreamer struct {
 	WriteFileStreamer
+	ReadWriteFramer
 
 	channel       *webrtc.DataChannel
 	stream        io.WriteCloser
 	streamInfo    StreamFile
-	bandwidthCalc rpc.StreamBandwithCalculator
+	bandwidthCalc StreamBandwithCalculator
 
 	bytesWritten int64
 	log          logrus.FieldLogger
@@ -26,7 +32,7 @@ type ReceiveStreamer struct {
 	Done chan struct{}
 }
 
-func NewReceiveStreamer(channel *webrtc.DataChannel, outputDir string) *ReceiveStreamer {
+func NewReceiveStreamer(channel *webrtc.DataChannel, outputDir string, fwriter WriteFileStreamer) *ReceiveStreamer {
 	s := &ReceiveStreamer{
 		channel: channel,
 		// stream:     stream,
@@ -37,8 +43,10 @@ func NewReceiveStreamer(channel *webrtc.DataChannel, outputDir string) *ReceiveS
 		Done:      make(chan struct{}),
 	}
 
-	s.bandwidthCalc = rpc.NewBandwithCalc(s.output)
-	s.WriteFileStreamer = &WriteFileStreamerWebrtc{channel}
+	s.bandwidthCalc = NewBandwithCalc(s.output)
+	s.WriteFileStreamer = fwriter
+	s.ReadWriteFramer = &DataChannelFramer{channel}
+	// s.FrameEncoder = &JSONFramer{}
 	return s
 }
 
@@ -59,7 +67,7 @@ func (s *ReceiveStreamer) OnClose() {
 }
 
 func (s *ReceiveStreamer) OnMessage(msg webrtc.DataChannelMessage) {
-	f, err := UnmarshalFramer(msg.Data)
+	f, err := s.ReadFrame(msg.Data)
 	if err != nil {
 		s.log.Error(err)
 		return

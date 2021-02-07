@@ -7,7 +7,6 @@ import (
 	"os"
 	"path/filepath"
 	"sharef/errx"
-	"sharef/rpc"
 	"strings"
 	"sync"
 	"time"
@@ -21,8 +20,15 @@ const (
 	SEND_BUFFER_AMOUNT_LOW_TRESHOLD = 524288 //512 * 1024
 )
 
+type ReadFileStreamer interface {
+	// SendFrame(t int, f Framer) (n uint64, err error)
+	OpenFile(name string) (io.ReadCloser, error)
+	ReadDir(name string) ([]os.FileInfo, error)
+}
+
 type SendStreamer struct {
 	ReadFileStreamer
+	ReadWriteFramer
 
 	channel    *webrtc.DataChannel
 	streamPath string
@@ -39,18 +45,11 @@ type SendStreamer struct {
 	output        io.Writer
 	streamChanges bool
 
-	bandwithCalc rpc.StreamBandwithCalculator
-}
-
-type SendStreamerOption func(s *SendStreamer)
-
-func openFileReader(path string) (io.ReadCloser, error) {
-	file, err := os.Open(path)
-	return file, err
+	bandwithCalc StreamBandwithCalculator
 }
 
 // func NewSendStreamer(channel *webrtc.DataChannel, streamInfo os.FileInfo, rootpath string, options ...SendStreamerOption) *SendStreamer {
-func NewSendStreamer(channel *webrtc.DataChannel, rootpath string, options ...SendStreamerOption) *SendStreamer {
+func NewSendStreamer(channel *webrtc.DataChannel, rootpath string, freader ReadFileStreamer) *SendStreamer {
 	r := &SendStreamer{
 		channel:     channel,
 		streamPath:  filepath.Clean(rootpath),
@@ -62,20 +61,22 @@ func NewSendStreamer(channel *webrtc.DataChannel, rootpath string, options ...Se
 		wg:          sync.WaitGroup{},
 	}
 
-	r.bandwithCalc = rpc.NewBandwithCalc(r.output)
+	r.bandwithCalc = NewBandwithCalc(r.output)
 	r.channel.SetBufferedAmountLowThreshold(SEND_BUFFER_AMOUNT_LOW_TRESHOLD)
 	// r.sendFrameCb = r.sendFrame         //Neded for mocking
-	r.ReadFileStreamer = &ReadFileStreamerWebrtc{channel}
+	r.ReadFileStreamer = freader
+	r.ReadWriteFramer = &DataChannelFramer{channel}
 	// r.openFileReaderCb = openFileReader //Neded for mocking
-
-	for _, opt := range options {
-		opt(r)
-	}
 	return r
 }
 
 func (s *SendStreamer) SetOutput(w io.Writer) {
 	s.output = w
+}
+
+// SetBandwithCalc allows changing default bandwithcalc. Must be called before streaming
+func (s *SendStreamer) SetBandwithCalc(calc StreamBandwithCalculator) {
+	s.bandwithCalc = calc
 }
 
 func (s *SendStreamer) AsyncStream(streamInfo os.FileInfo) error {
@@ -284,7 +285,7 @@ func (s *SendStreamer) streamReader(file io.Reader, size int64, fname string) er
 func (s *SendStreamer) OnMessage(msg webrtc.DataChannelMessage) {
 	// s.log.Infof("Sender on message called")
 
-	f, err := UnmarshalFramer(msg.Data)
+	f, err := s.ReadFrame(msg.Data)
 	if err != nil {
 		s.log.Error(err)
 		return
@@ -306,7 +307,7 @@ func (s *SendStreamer) postFrame(t int, f Framer) (Framer, error) {
 	var res Framer
 	select {
 	case res = <-s.frameCh:
-	case <-time.After(10 * time.Second):
+	case <-time.After(60 * time.Second):
 		return nil, fmt.Errorf("Timeout")
 	}
 

@@ -1,4 +1,4 @@
-package rpc
+package streamer
 
 import (
 	"fmt"
@@ -41,10 +41,6 @@ func NewBandwithCalc(w io.Writer) *BandwithCalc {
 	return b
 }
 
-func (b *BandwithCalc) ResetTimer() {
-	b.start = time.Now()
-}
-
 func (b *BandwithCalc) calcIn(munit int64) float64 {
 	duration := b.duration.Seconds()
 	if duration < 1 {
@@ -68,6 +64,22 @@ func (b *BandwithCalc) percentage() int64 {
 	return int64(bandwidth)
 }
 
+func (b *BandwithCalc) printOnSecond() {
+	since := time.Since(b.lastprint)
+	if since.Seconds() > 1 { //Printing only if there are changes
+		b.print()
+		b.lastprint = time.Now()
+	}
+}
+
+func (b *BandwithCalc) print() {
+	speed := b.calcIn(MB)
+	total := b.total(MB)
+	percentage := b.percentage()
+	s := fmt.Sprintf("\033[999D%s     %d%% %.2fMB %.2f MB/s\033[K", b.streamname, percentage, total, speed)
+	fmt.Fprint(b.w, s)
+}
+
 func (b *BandwithCalc) NewStream(streamname string, n uint64) {
 	b.start = time.Now()
 	b.lastprint = time.Time{}
@@ -84,20 +96,4 @@ func (b *BandwithCalc) Add(n uint64) {
 
 func (b *BandwithCalc) Finish() {
 	b.print()
-}
-
-func (b *BandwithCalc) printOnSecond() {
-	since := time.Since(b.lastprint)
-	if since.Seconds() > 1 { //Printing only if there are changes
-		b.print()
-		b.lastprint = time.Now()
-	}
-}
-
-func (b *BandwithCalc) print() {
-	speed := b.calcIn(MB)
-	total := b.total(MB)
-	percentage := b.percentage()
-	s := fmt.Sprintf("\033[999D%s     %d%% %.2fMB %.2f MB/s\033[K", b.streamname, percentage, total, speed)
-	fmt.Fprint(b.w, s)
 }

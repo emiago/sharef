@@ -26,6 +26,10 @@ func (s *MockReadFileStreamer) SendFrame(t int, f Framer) (n uint64, err error) 
 	return s.readN, nil
 }
 
+func (s *MockReadFileStreamer) ReadFrame(msg []byte) (f Framer, err error) {
+	return UnmarshalFramer(msg)
+}
+
 func (s *MockReadFileStreamer) OpenFile(path string) (io.ReadCloser, error) {
 	buf := bytes.NewReader(s.fakedata)
 	file := ioutil.NopCloser(buf)
@@ -36,25 +40,22 @@ func (s *MockReadFileStreamer) ReadDir(path string) ([]os.FileInfo, error) {
 	return s.fakeDir[path], nil
 }
 
-func NewMockSendStreamer(name string, rootpath string) (*SendStreamer, error) {
+func NewMockSendStreamer(name string, rootpath string, freader *MockReadFileStreamer) (*SendStreamer, error) {
 	conn, err := webrtc.NewPeerConnection(webrtc.Configuration{})
 	if err != nil {
 		return nil, err
 	}
 
 	dataChannel, err := conn.CreateDataChannel(name, DataChannelInitFileStream())
-	sender := NewSendStreamer(dataChannel, rootpath)
+	sender := NewSendStreamer(dataChannel, rootpath, freader)
+	sender.ReadWriteFramer = freader
 	return sender, nil
 }
-
-func TestNewMockStream(t *testing.T) {
-	_, err := NewMockSendStreamer("test", "")
-	require.Nil(t, err)
-}
-
 func TestSendStreamerPrepareNewStream(t *testing.T) {
 	// streamInfo := &FileStat{name: "mydir"}
-	sender, err := NewMockSendStreamer("test", "/opt/my/some/mydir")
+	mocker := &MockReadFileStreamer{}
+
+	sender, err := NewMockSendStreamer("test", "/opt/my/some/mydir", mocker)
 	require.Nil(t, err)
 
 	fi := &FileStat{
@@ -78,17 +79,17 @@ func TestSendStreamerStreamfile(t *testing.T) {
 		name: "file.txt",
 	}
 
-	sender, err := NewMockSendStreamer("test", "/opt/file.txt")
-	require.Nil(t, err)
-
 	mocker := &MockReadFileStreamer{
 		fakedata: []byte("0123456789"),
 		readN:    10,
 	}
 
-	sender.ReadFileStreamer = mocker
+	sender, err := NewMockSendStreamer("test", "/opt/file.txt", mocker)
+	require.Nil(t, err)
 
-	file, _ := sender.OpenFile("file.txt")
+	file, err := sender.OpenFile("file.txt")
+	require.Nil(t, err)
+
 	err = sender.streamReader(file, fi.Size(), fi.Name())
 	require.Nil(t, err)
 
@@ -110,9 +111,6 @@ func TestSendStreamerProcessFile(t *testing.T) {
 		mode: os.ModeDir,
 	}
 
-	sender, err := NewMockSendStreamer("test", rootpath)
-	require.Nil(t, err)
-
 	mocker := &MockReadFileStreamer{
 		fakedata: []byte("0123456789"), //This is for file.txt
 		readN:    10,
@@ -127,7 +125,9 @@ func TestSendStreamerProcessFile(t *testing.T) {
 		},
 	}
 
-	sender.ReadFileStreamer = mocker
+	sender, err := NewMockSendStreamer("test", rootpath, mocker)
+	require.Nil(t, err)
+
 	go func() {
 		//Fake response from receiver, and check is every processed
 		for {

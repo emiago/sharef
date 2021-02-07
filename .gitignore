@@ -1,3 +1,4 @@
-release
-itests/internal/received
-sharef
+/release
+/itests/internal/received
+/sharef
+/.vscode
