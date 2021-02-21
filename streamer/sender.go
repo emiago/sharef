@@ -142,3 +142,15 @@ func (s *Sender) onConnectionStateChange(connected chan struct{}) func(connectio
 		}
 	}
 }
+
+// func (s *Sender) onConnectionStateChange(connected chan struct{}) func(connectionState webrtc.ICEConnectionState) {
+// 	once := &sync.Once{}
+// 	return func(sig webrtc.ICEConnectionState) {
+// 		s.log.Debug("ICE STATE: ", sig.String())
+// 		if sig == webrtc.ICEConnectionStateConnected {
+// 			once.Do(func() {
+// 				close(connected)
+// 			})
+// 		}
+// 	}
+// }

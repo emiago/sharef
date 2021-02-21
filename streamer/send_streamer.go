@@ -32,8 +32,6 @@ type SendStreamer struct {
 
 	channel    *webrtc.DataChannel
 	streamPath string
-	// sendFrameCb      func(t int, f Framer) (n uint64, err error)
-	openFileReaderCb func(path string) (io.ReadCloser, error)
 
 	bytesWritten int64
 	frameCh      chan Framer
@@ -66,7 +64,6 @@ func NewSendStreamer(channel *webrtc.DataChannel, rootpath string, freader ReadF
 	// r.sendFrameCb = r.sendFrame         //Neded for mocking
 	r.ReadFileStreamer = freader
 	r.ReadWriteFramer = &DataChannelFramer{channel}
-	// r.openFileReaderCb = openFileReader //Neded for mocking
 	return r
 }
 

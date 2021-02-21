@@ -1,7 +1,9 @@
 package streamer
 
 import (
+	"fmt"
 	"sharef/fsx"
+	"time"
 
 	webrtc "github.com/pion/webrtc/v3"
 	"github.com/sirupsen/logrus"
@@ -11,32 +13,24 @@ import (
 // Session is a receiver session
 type Receiver struct {
 	Session
-	outputDir            string
-	Done                 chan struct{}
-	log                  logrus.FieldLogger
-	OnNewReceiveStreamer func(receiver *ReceiveStreamer)
+	Done chan struct{}
+	log  logrus.FieldLogger
+
+	filechannel *webrtc.DataChannel
 }
 
-func NewReceiver(s Session, outputDir string) *Receiver {
-	if outputDir == "" {
-		outputDir = "."
-	}
+func NewReceiver(s Session) *Receiver {
 
 	r := &Receiver{
-		Session:   s,
-		outputDir: outputDir,
-		log:       logrus.WithField("prefix", "receiver"),
-		Done:      make(chan struct{}),
-		OnNewReceiveStreamer: func(receiver *ReceiveStreamer) {
-			//By Default on new receive stream channel, receiver will stream
-			receiver.Stream()
-		},
+		Session: s,
+		log:     logrus.WithField("prefix", "receiver"),
 	}
 
 	return r
 }
 
 func (s *Receiver) Dial() error {
+	onfilechannel := make(chan struct{})
 	if err := s.CreateConnection(s.onConnectionStateChange()); err != nil {
 		log.Errorln(err)
 		return err
@@ -44,9 +38,8 @@ func (s *Receiver) Dial() error {
 
 	s.OnDataChannel(func(d *webrtc.DataChannel) {
 		s.log.Infof("New DataChannel %s %d\n", d.Label(), d.ID())
-
-		receiver := NewReceiveStreamer(d, s.outputDir, fsx.NewFileWriter())
-		go s.OnNewReceiveStreamer(receiver)
+		s.filechannel = d
+		close(onfilechannel)
 	})
 
 	if err := s.ReadSDP(); err != nil {
@@ -59,13 +52,19 @@ func (s *Receiver) Dial() error {
 		return err
 	}
 
-	s.log.Infoln("Starting to receive data...")
+	s.log.Debug("Waiting for connection before receiving")
+	select {
+	case <-onfilechannel:
+	case <-time.After(10 * time.Second):
+		return fmt.Errorf("Fail to get connected")
+	}
+
 	return nil
 }
 
 func (s *Receiver) DialReverse() error {
-	if err := s.CreateConnection(s.onConnectionStateChange()); err != nil {
-		log.Errorln(err)
+	connected := make(chan struct{})
+	if err := s.CreateConnection(s.onConnectionStateConnected(connected)); err != nil {
 		return err
 	}
 
@@ -84,11 +83,23 @@ func (s *Receiver) DialReverse() error {
 		return err
 	}
 
-	receiver := NewReceiveStreamer(d, s.outputDir, fsx.NewFileWriter())
-	go s.OnNewReceiveStreamer(receiver)
+	s.log.Debug("Waiting for connection before receiving")
+	select {
+	case <-connected:
+	case <-time.After(10 * time.Second):
+		return fmt.Errorf("Fail to get connected")
+	}
 
-	s.log.Infoln("Starting to receive data...")
+	s.filechannel = d
 	return nil
+}
+
+func (s *Receiver) NewFileStreamer(rootpath string) *ReceiveStreamer {
+	return NewReceiveStreamer(s.filechannel, rootpath, fsx.NewFileWriter())
+}
+
+func (s *Receiver) NewFileStreamerWithWritter(rootpath string, fwriter WriteFileStreamer) *ReceiveStreamer {
+	return NewReceiveStreamer(s.filechannel, rootpath, fwriter)
 }
 
 func (s *Receiver) onConnectionStateChange() func(connectionState webrtc.ICEConnectionState) {

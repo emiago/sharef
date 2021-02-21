@@ -72,12 +72,12 @@ func startSender() (sen *streamer.Sender, term *bufio.Reader, sdpInput *SafeBuff
 	return sen, term, sdpInput, sdpOutput, connected
 }
 
-func startReceiver(sdpInput *SafeBuffer, sdpOutput *SafeBuffer, outputDir string) (rec *streamer.Receiver, term *bufio.Reader, connected chan error) {
+func startReceiver(sdpInput *SafeBuffer, sdpOutput *SafeBuffer) (rec *streamer.Receiver, term *bufio.Reader, connected chan error) {
 	// reader, writer := io.Pipe()
 	// term = bufio.NewReader(reader)
 
 	conn := streamer.NewSession(sdpInput, sdpOutput)
-	rec = streamer.NewReceiver(conn, outputDir)
+	rec = streamer.NewReceiver(conn)
 
 	connected = make(chan error)
 	go func() {
@@ -203,7 +203,7 @@ func (s *SenderReceiverConnector) SetupConnection(outputDir string) error {
 	}
 
 	sen, _, sin, sout, sconnected := startSender()
-	rec, _, rconnected := startReceiver(sout, sin, outputDir)
+	rec, _, rconnected := startReceiver(sout, sin)
 
 	if err := <-sconnected; err != nil {
 		return err
@@ -212,6 +212,9 @@ func (s *SenderReceiverConnector) SetupConnection(outputDir string) error {
 	if err := <-rconnected; err != nil {
 		return err
 	}
+
+	streamer := rec.NewFileStreamer(outputDir)
+	streamer.Stream()
 
 	s.sender = sen
 	s.receiver = rec

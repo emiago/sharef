@@ -29,10 +29,14 @@ type ReceiveStreamer struct {
 	outputDir    string
 	output       io.Writer
 
-	Done chan struct{}
+	// Done chan struct{}
 }
 
 func NewReceiveStreamer(channel *webrtc.DataChannel, outputDir string, fwriter WriteFileStreamer) *ReceiveStreamer {
+	if outputDir == "" {
+		outputDir = "."
+	}
+
 	s := &ReceiveStreamer{
 		channel: channel,
 		// stream:     stream,
@@ -40,7 +44,7 @@ func NewReceiveStreamer(channel *webrtc.DataChannel, outputDir string, fwriter W
 		outputDir: outputDir,
 		log:       logrus.WithField("prefix", "receivestream"),
 		output:    os.Stdout,
-		Done:      make(chan struct{}),
+		// Done:      make(chan struct{}),
 	}
 
 	s.bandwidthCalc = NewBandwithCalc(s.output)
@@ -50,10 +54,16 @@ func NewReceiveStreamer(channel *webrtc.DataChannel, outputDir string, fwriter W
 	return s
 }
 
-func (s *ReceiveStreamer) Stream() {
+func (s *ReceiveStreamer) Stream() (done chan struct{}) {
 	s.channel.OnOpen(s.OnOpen)
 	s.channel.OnMessage(s.OnMessage)
-	s.channel.OnClose(s.OnClose)
+
+	done = make(chan struct{})
+	s.channel.OnClose(func() {
+		s.log.Infof("Recive Streamer %s closed", s.channel.Label())
+		close(done)
+	})
+	return done
 }
 
 func (s *ReceiveStreamer) OnOpen() {
@@ -61,10 +71,10 @@ func (s *ReceiveStreamer) OnOpen() {
 	// fmt.Fprintln(s.output, "\nReceiving files:")
 }
 
-func (s *ReceiveStreamer) OnClose() {
-	s.log.Infof("Recive Streamer %s closed", s.channel.Label())
-	close(s.Done)
-}
+// func (s *ReceiveStreamer) OnClose() {
+// 	s.log.Infof("Recive Streamer %s closed", s.channel.Label())
+// 	close(s.Done)
+// }
 
 func (s *ReceiveStreamer) OnMessage(msg webrtc.DataChannelMessage) {
 	f, err := s.ReadFrame(msg.Data)

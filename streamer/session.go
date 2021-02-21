@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"strings"
+	"sync"
 
 	webrtc "github.com/pion/webrtc/v3"
 	log "github.com/sirupsen/logrus"
@@ -151,12 +152,15 @@ func (s *Session) createSessionDescription(desc webrtc.SessionDescription, promp
 	return nil
 }
 
-func (s *Session) onConnectionStateChange() func(connectionState webrtc.ICEConnectionState) {
-	return func(connectionState webrtc.ICEConnectionState) {
-		log.Infof("ICE Connection State has changed: %s\n", connectionState.String())
-		// if connectionState == webrtc.ICEConnectionStateDisconnected {
-		// 	s.stopSending <- struct{}{}
-		// }
+func (s *Session) onConnectionStateConnected(connected chan struct{}) func(connectionState webrtc.ICEConnectionState) {
+	once := &sync.Once{}
+	return func(sig webrtc.ICEConnectionState) {
+		log.Debug("ICE STATE: ", sig.String())
+		if sig == webrtc.ICEConnectionStateConnected {
+			once.Do(func() {
+				close(connected)
+			})
+		}
 	}
 }
 
