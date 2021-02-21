@@ -63,6 +63,34 @@ func (s *Receiver) Dial() error {
 	return nil
 }
 
+func (s *Receiver) DialReverse() error {
+	if err := s.CreateConnection(s.onConnectionStateChange()); err != nil {
+		log.Errorln(err)
+		return err
+	}
+
+	d, err := s.createFileChannel("filestream")
+	if err != nil {
+		return err
+	}
+
+	if err := s.CreateOffer(); err != nil {
+		s.log.Errorln(err)
+		return err
+	}
+
+	if err := s.ReadSDP(); err != nil {
+		s.log.Errorln(err)
+		return err
+	}
+
+	receiver := NewReceiveStreamer(d, s.outputDir, fsx.NewFileWriter())
+	go s.OnNewReceiveStreamer(receiver)
+
+	s.log.Infoln("Starting to receive data...")
+	return nil
+}
+
 func (s *Receiver) onConnectionStateChange() func(connectionState webrtc.ICEConnectionState) {
 	return func(connectionState webrtc.ICEConnectionState) {
 		s.log.Infof("ICE Connection State has changed: %s\n", connectionState.String())
@@ -70,4 +98,9 @@ func (s *Receiver) onConnectionStateChange() func(connectionState webrtc.ICEConn
 			close(s.Done)
 		}
 	}
+}
+
+func (s *Receiver) createFileChannel(name string) (*webrtc.DataChannel, error) {
+	dataChannel, err := s.peerConnection.CreateDataChannel(name, DataChannelInitFileStream())
+	return dataChannel, err
 }

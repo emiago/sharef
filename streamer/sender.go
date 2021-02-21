@@ -71,6 +71,38 @@ func (s *Sender) Dial() error {
 	return nil
 }
 
+func (s *Sender) DialReverse() error {
+	onfilechannel := make(chan struct{})
+	if err := s.CreateConnection(nil); err != nil {
+		return err
+	}
+
+	s.OnDataChannel(func(d *webrtc.DataChannel) {
+		s.log.Infof("New DataChannel %s %d\n", d.Label(), d.ID())
+		s.filechannel = d
+		close(onfilechannel)
+	})
+
+	if err := s.ReadSDP(); err != nil {
+		s.log.Errorln(err)
+		return err
+	}
+
+	if err := s.CreateAnswer(); err != nil {
+		s.log.Errorln(err)
+		return err
+	}
+
+	s.log.Debug("Waiting for connection before sending")
+	select {
+	case <-onfilechannel:
+	case <-time.After(10 * time.Second):
+		return fmt.Errorf("Fail to get connected")
+	}
+
+	return nil
+}
+
 func (s *Sender) SendFile(dest string) (err error) {
 	fi, err := os.Stat(dest)
 	if err != nil {
