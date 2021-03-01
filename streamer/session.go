@@ -18,6 +18,16 @@ const (
 	SDP_ANSWER_WAITING_PROMPT = "Please, paste the remote answer:"
 )
 
+var (
+	ICEServerList = []webrtc.ICEServer{
+		{
+			URLs: []string{
+				"stun:stun.l.google.com:19302",
+			},
+		},
+	}
+)
+
 type CompletionHandler func()
 
 // Session contains common elements to perform send/receive
@@ -26,16 +36,13 @@ type Session struct {
 	sdpWriter      io.Writer
 	peerConnection *webrtc.PeerConnection
 	onCompletion   CompletionHandler
-	stunServers    []string
-	// writer         io.Writer
 }
 
 // New creates a new Session
 func NewSession(SDPReader io.Reader, SDPWriter io.Writer) Session {
 	sess := Session{
-		sdpReader:   SDPReader,
-		sdpWriter:   SDPWriter,
-		stunServers: []string{"stun:stun.l.google.com:19302"},
+		sdpReader: SDPReader,
+		sdpWriter: SDPWriter,
 	}
 
 	return sess
@@ -52,12 +59,9 @@ func (s *Session) Close() error {
 // CreateConnection prepares a WebRTC connection
 func (s *Session) CreateConnection(onConnectionStateChange func(connectionState webrtc.ICEConnectionState)) error {
 	config := webrtc.Configuration{
-		ICEServers: []webrtc.ICEServer{
-			{
-				URLs: s.stunServers,
-			},
-		},
-		BundlePolicy: webrtc.BundlePolicyBalanced,
+		ICEServers:         ICEServerList,
+		ICETransportPolicy: webrtc.ICETransportPolicyAll,
+		BundlePolicy:       webrtc.BundlePolicyBalanced,
 		// SDPSemantics: webrtc.SDPSemanticsPlanB,
 	}
 

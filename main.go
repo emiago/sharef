@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"sharef/cli"
+	cliconf "sharef/cli/conf"
 
 	log_prefixed "github.com/chappjc/logrus-prefix"
 	"github.com/sirupsen/logrus"
@@ -32,6 +33,8 @@ func main() {
 	}
 	flag.Parse()
 	logrus.SetLevel(logrus.Level(*verbose))
+	// Read any enviroment vars for
+	cliconf.ReadEnv()
 
 	args := flag.Args()
 

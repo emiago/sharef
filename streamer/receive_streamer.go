@@ -116,6 +116,7 @@ func (s *ReceiveStreamer) streamFrameData(data []byte) {
 	b.Add(uint64(n))
 
 	if s.bytesWritten >= s.streamInfo.Size {
+		s.stream.Close()
 		b.Finish()
 	}
 }

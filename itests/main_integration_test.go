@@ -23,6 +23,8 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
+
+	cliconf "sharef/cli/conf"
 )
 
 func init() {
@@ -31,6 +33,8 @@ func init() {
 	logrus.SetFormatter(&log_prefixed.TextFormatter{
 		FullTimestamp: true,
 	})
+
+	cliconf.ReadEnv()
 }
 
 type SuiteSendFile struct {
