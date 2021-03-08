@@ -7,14 +7,16 @@ import (
 )
 
 type StreamFile struct {
-	Name     string //Relative path depending on what is sharing
-	Path     string //This should be removed, it is used on sender receiver to keep original path
-	FullPath string
-	Size     int64
-	Mode     os.FileMode
-	ModTime  time.Time
+	Name string //Relative path depending on what is sharing
+	Path string //This should be removed, it is used on sender receiver to keep original path
+
+	Size    int64
+	Mode    os.FileMode
+	ModTime time.Time
 	// Data    []byte
 	// sys     syscall.Stat_t
+	//Used on receiver side
+	fullPath string
 }
 
 func (s *StreamFile) IsDir() bool {

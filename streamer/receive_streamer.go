@@ -1,6 +1,7 @@
 package streamer
 
 import (
+	"fmt"
 	"io"
 	"os"
 	"path/filepath"
@@ -131,18 +132,19 @@ func (s *ReceiveStreamer) isCurrentStreamSynced() bool {
 
 func (s *ReceiveStreamer) handleNewStreamFrame(info StreamFile) error {
 	// info.FullPath = fmt.Sprintf("%s/%s", s.outputDir, info.Name)
-	info.FullPath = filepath.Join(s.outputDir, info.Name)
-	s.log.Infof("Opening file %s %s", info.FullPath, info.Mode)
+	info.fullPath = filepath.Join(s.outputDir, info.Name)
+	s.log.Infof("Opening file %s %s", info.fullPath, info.Mode)
+	fmt.Println("Open file", info)
 
 	if info.Mode.IsDir() {
 		//If this is a directory, just create it
-		if err := s.Mkdir(info.FullPath, info.Mode); err != nil {
+		if err := s.Mkdir(info.fullPath, info.Mode); err != nil {
 			return err
 		}
 		return nil
 	}
 
-	file, err := s.OpenFile(info.FullPath, info.Mode)
+	file, err := s.OpenFile(info.fullPath, info.Mode)
 	if err != nil {
 		return err
 	}

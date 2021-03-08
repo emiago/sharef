@@ -32,6 +32,7 @@ type SendStreamer struct {
 
 	channel    *webrtc.DataChannel
 	streamPath string
+	destPath   string
 
 	bytesWritten int64
 	frameCh      chan Framer
@@ -74,6 +75,11 @@ func (s *SendStreamer) SetOutput(w io.Writer) {
 // SetBandwithCalc allows changing default bandwithcalc. Must be called before streaming
 func (s *SendStreamer) SetBandwithCalc(calc StreamBandwithCalculator) {
 	s.bandwithCalc = calc
+}
+
+// SetDestinationPath will prefix path on destination side.
+func (s *SendStreamer) SetDestinationPath(destpath string) {
+	s.destPath = filepath.Clean(destpath)
 }
 
 func (s *SendStreamer) AsyncStream(streamInfo os.FileInfo) error {
@@ -215,7 +221,7 @@ func (s *SendStreamer) prepareNewStream(fi os.FileInfo, path string) StreamFile 
 	stripped := strings.TrimPrefix(path, mainpath)
 
 	//Relative path for receiver must be constructed
-	info.Name = filepath.Join(base, stripped)
+	info.Name = filepath.Join(s.destPath, base, stripped)
 
 	s.log.Infof("Sending file stream %s %s", info.Name, s.streamPath)
 
@@ -224,7 +230,7 @@ func (s *SendStreamer) prepareNewStream(fi os.FileInfo, path string) StreamFile 
 
 func (s *SendStreamer) processNewStream(file io.Reader, info StreamFile) error {
 	if _, err := s.postFrame(FRAME_NEWSTREAM, &FrameNewStream{Info: info}); err != nil {
-		return errx.Wrapf(err, "Fail to post frame for file %s", info.Path)
+		return errx.Wrapf(err, "Fail to post frame for file %s", info.Name)
 	}
 
 	if info.IsDir() {
@@ -233,7 +239,7 @@ func (s *SendStreamer) processNewStream(file io.Reader, info StreamFile) error {
 	}
 
 	if err := s.streamReader(file, info.Size, info.Name); err != nil {
-		return errx.Wrapf(err, "Fail to stream file %s", info.Path)
+		return errx.Wrapf(err, "Fail to stream file %s", info.Name)
 	}
 	return nil
 }

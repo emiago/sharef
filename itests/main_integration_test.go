@@ -92,12 +92,12 @@ func (suite *SuiteSendFile) TestStringReader() {
 	readersize := bytes.NewReader(senddata)
 	reader := bytes.NewReader(senddata)
 	fi := streamer.StreamFile{
-		Name:     path.Base(sendfile),
-		Path:     sendfile,
-		FullPath: sendfile,
-		Size:     readersize.Size(),
-		Mode:     os.FileMode(0664),
-		ModTime:  time.Now(),
+		Name: path.Base(sendfile),
+		Path: sendfile,
+		// FullPath: sendfile,
+		Size:    readersize.Size(),
+		Mode:    os.FileMode(0664),
+		ModTime: time.Now(),
 	}
 
 	err := sender.StreamReader(context.Background(), reader, fi)

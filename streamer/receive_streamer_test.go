@@ -87,7 +87,7 @@ func checkNewStreamFrameSingle(t *testing.T, sf StreamFile, receiver *ReceiveStr
 	err := receiver.handleNewStreamFrame(sf)
 	require.Nil(t, err)
 
-	opened, ok := mocker.openfiles[receiver.streamInfo.FullPath]
+	opened, ok := mocker.openfiles[receiver.streamInfo.fullPath]
 	require.True(t, ok)
 	require.Equal(t, 1, len(opened))
 
