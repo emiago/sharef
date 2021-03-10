@@ -76,8 +76,7 @@ func (b *BandwithCalc) print() {
 	speed := b.calcIn(MB)
 	total := b.total(MB)
 	percentage := b.percentage()
-	s := fmt.Sprintf("\033[999D%s     %d%% %.2fMB %.2f MB/s\033[K", b.streamname, percentage, total, speed)
-	fmt.Fprint(b.w, s)
+	fmt.Fprintf(b.w, "\033[999D%s     %d%% %.2fMB %.2f MB/s\033[K", b.streamname, percentage, total, speed)
 }
 
 func (b *BandwithCalc) NewStream(streamname string, n uint64) {
@@ -85,6 +84,7 @@ func (b *BandwithCalc) NewStream(streamname string, n uint64) {
 	b.lastprint = time.Time{}
 	b.streamname = streamname
 	b.size = n
+	b.n = 0
 }
 
 //When adding bytes we calculate duration, to be more precise
@@ -96,4 +96,5 @@ func (b *BandwithCalc) Add(n uint64) {
 
 func (b *BandwithCalc) Finish() {
 	b.print()
+	fmt.Fprintln(b.w) //Print new line on finish. So that next stream does now overwrite output
 }

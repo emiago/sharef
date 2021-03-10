@@ -1,7 +1,6 @@
 package streamer
 
 import (
-	"fmt"
 	"io"
 	"os"
 	"path/filepath"
@@ -31,6 +30,9 @@ type ReceiveStreamer struct {
 	output       io.Writer
 
 	// Done chan struct{}
+
+	// FilesCount is number of files received, which can be read at the end of stream. Not safe to read during streaming
+	FilesCount int
 }
 
 func NewReceiveStreamer(channel *webrtc.DataChannel, outputDir string, fwriter WriteFileStreamer) *ReceiveStreamer {
@@ -134,7 +136,6 @@ func (s *ReceiveStreamer) handleNewStreamFrame(info StreamFile) error {
 	// info.FullPath = fmt.Sprintf("%s/%s", s.outputDir, info.Name)
 	info.fullPath = filepath.Join(s.outputDir, info.Name)
 	s.log.Infof("Opening file %s %s", info.fullPath, info.Mode)
-	fmt.Println("Open file", info)
 
 	if info.Mode.IsDir() {
 		//If this is a directory, just create it
@@ -154,5 +155,7 @@ func (s *ReceiveStreamer) handleNewStreamFrame(info StreamFile) error {
 	s.bandwidthCalc.NewStream(info.Name, uint64(info.Size))
 	s.bytesWritten = 0
 
+	// Track some stats
+	s.FilesCount++
 	return nil
 }
