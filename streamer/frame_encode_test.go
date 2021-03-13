@@ -3,6 +3,7 @@ package streamer
 import (
 	"testing"
 
+	"github.com/google/go-cmp/cmp/cmpopts"
 	"github.com/stretchr/testify/require"
 	"gotest.tools/assert"
 )
@@ -14,7 +15,7 @@ func TestFrameMarshal(t *testing.T) {
 		unmarshaled, err := UnmarshalFramer(marshaled)
 		require.Nil(t, err)
 
-		assert.DeepEqual(t, f, unmarshaled)
+		assert.DeepEqual(t, f, unmarshaled, cmpopts.IgnoreUnexported(StreamFile{}))
 	}
 
 	compare(&Frame{}, FRAME_OK)

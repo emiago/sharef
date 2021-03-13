@@ -220,8 +220,8 @@ func (s *SendStreamer) prepareNewStream(fi os.FileInfo, path string) StreamFile 
 
 	stripped := strings.TrimPrefix(path, mainpath)
 
-	//Relative path for receiver must be constructed
-	info.Name = filepath.Join(s.destPath, base, stripped)
+	//Construct base path
+	info.Name = filepath.Join(base, stripped)
 
 	s.log.Infof("Sending file stream %s %s", info.Name, s.streamPath)
 
@@ -229,6 +229,9 @@ func (s *SendStreamer) prepareNewStream(fi os.FileInfo, path string) StreamFile 
 }
 
 func (s *SendStreamer) processNewStream(file io.Reader, info StreamFile) error {
+	//Relative path for receiver must be constructed
+	info.Name = filepath.Join(s.destPath, info.Name)
+
 	if _, err := s.postFrame(FRAME_NEWSTREAM, &FrameNewStream{Info: info}); err != nil {
 		return errx.Wrapf(err, "Fail to post frame for file %s", info.Name)
 	}
