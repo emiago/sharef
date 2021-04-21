@@ -6,10 +6,11 @@ import (
 	"io"
 	"os"
 	"path/filepath"
-	"sharef/errx"
 	"strings"
 	"sync"
 	"time"
+
+	"github.com/emiraganov/sharef/errx"
 
 	webrtc "github.com/pion/webrtc/v3"
 	"github.com/sirupsen/logrus"

@@ -1,4 +1,4 @@
-module sharef
+module github.com/emiraganov/sharef
 
 go 1.13
 
@@ -29,5 +29,3 @@ require (
 	gopkg.in/yaml.v3 v3.0.0-20210106172901-c476de37821d // indirect
 	gotest.tools v2.2.0+incompatible
 )
-
-// replace github.com/emiraganov/goextra => ../goextra

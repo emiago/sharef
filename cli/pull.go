@@ -3,8 +3,9 @@ package cli
 import (
 	"flag"
 	"fmt"
-	"sharef/cli/sdp"
-	"sharef/streamer"
+
+	"github.com/emiraganov/sharef/cli/sdp"
+	"github.com/emiraganov/sharef/streamer"
 
 	log "github.com/sirupsen/logrus"
 )

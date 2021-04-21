@@ -4,8 +4,9 @@ import (
 	"flag"
 	"fmt"
 	"os"
-	"sharef/cli"
-	cliconf "sharef/cli/conf"
+
+	"github.com/emiraganov/sharef/cli"
+	cliconf "github.com/emiraganov/sharef/cli/conf"
 
 	log_prefixed "github.com/chappjc/logrus-prefix"
 	"github.com/sirupsen/logrus"

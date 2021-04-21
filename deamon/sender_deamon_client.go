@@ -5,7 +5,8 @@ import (
 	"fmt"
 	"io"
 	"path/filepath"
-	"sharef/api"
+
+	"github.com/emiraganov/sharef/api"
 
 	log "github.com/sirupsen/logrus"
 	"google.golang.org/grpc"

@@ -4,8 +4,9 @@ import (
 	"flag"
 	"fmt"
 	"os"
-	"sharef/deamon"
-	"sharef/streamer"
+
+	"github.com/emiraganov/sharef/deamon"
+	"github.com/emiraganov/sharef/streamer"
 
 	log "github.com/sirupsen/logrus"
 )

@@ -6,8 +6,9 @@ import (
 	"io"
 	"net"
 	"os"
-	"sharef/api"
-	"sharef/streamer"
+
+	"github.com/emiraganov/sharef/api"
+	"github.com/emiraganov/sharef/streamer"
 
 	grpc "google.golang.org/grpc"
 	codes "google.golang.org/grpc/codes"

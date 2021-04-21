@@ -3,8 +3,9 @@ package conf
 import (
 	"fmt"
 	"os"
-	"sharef/streamer"
 	"strings"
+
+	"github.com/emiraganov/sharef/streamer"
 
 	"github.com/pion/webrtc/v3"
 )

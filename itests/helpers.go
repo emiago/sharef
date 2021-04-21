@@ -7,11 +7,12 @@ import (
 	"io/ioutil"
 	"os"
 	"path/filepath"
-	"sharef/streamer"
 	"strings"
 	"sync"
 	"testing"
 	"time"
+
+	"github.com/emiraganov/sharef/streamer"
 
 	"github.com/emiraganov/goextra/osx"
 	"github.com/stretchr/testify/assert"

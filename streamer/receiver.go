@@ -2,8 +2,9 @@ package streamer
 
 import (
 	"fmt"
-	"sharef/fsx"
 	"time"
+
+	"github.com/emiraganov/sharef/fsx"
 
 	webrtc "github.com/pion/webrtc/v3"
 	"github.com/sirupsen/logrus"

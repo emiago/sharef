@@ -6,12 +6,12 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"github.com/emiraganov/sharef/streamer"
+	"github.com/emiraganov/sharef/watcher"
 	"io/ioutil"
 	"os"
 	"path"
 	"path/filepath"
-	"sharef/streamer"
-	"sharef/watcher"
 	"strings"
 	"syscall"
 	"testing"
@@ -24,7 +24,7 @@ import (
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
 
-	cliconf "sharef/cli/conf"
+	cliconf "github.com/emiraganov/sharef/cli/conf"
 )
 
 func init() {

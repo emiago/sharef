@@ -4,9 +4,10 @@ import (
 	"context"
 	"fmt"
 	"os"
-	"sharef/fsx"
 	"sync"
 	"time"
+
+	"github.com/emiraganov/sharef/fsx"
 
 	webrtc "github.com/pion/webrtc/v3"
 
