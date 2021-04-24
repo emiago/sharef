@@ -1,5 +1,9 @@
 package streamer
 
+import (
+	"google.golang.org/protobuf/runtime/protoiface"
+)
+
 const (
 	FRAME_NEWSTREAM = iota
 	FRAME_DATA
@@ -8,33 +12,48 @@ const (
 )
 
 type Framer interface {
-	T(t int)
-	GetT() int
+	// proto.Message
+	protoiface.MessageV1
+	//protoreflect.ProtoMessage
+	SetT(t int32)
+	GetT() int32
 }
 
-type Frame struct {
-	Type int
+// type Frame struct {
+// 	Type int
+// }
+
+func (f *Frame) SetT(t int32) {
+	f.T = t
 }
 
-func (f *Frame) T(t int) {
-	f.Type = t
+func (f *FrameError) SetT(t int32) {
+	f.T = t
 }
 
-func (f *Frame) GetT() int {
-	return f.Type
+func (f *FrameNewStream) SetT(t int32) {
+	f.T = t
 }
 
-type FrameError struct {
-	Frame
-	Err string
+func (f *FrameData) SetT(t int32) {
+	f.T = t
 }
 
-type FrameNewStream struct {
-	Frame
-	Info StreamFile
-}
+// func (f *Frame) GetT() int {
+// 	return f.Type
+// }
 
-type FrameData struct {
-	Frame
-	Data []byte
-}
+// type FrameError struct {
+// 	Frame
+// 	Err string
+// }
+
+// type FrameNewStream struct {
+// 	Frame
+// 	Info StreamFile
+// }
+
+// type FrameData struct {
+// 	Frame
+// 	Data []byte
+// }

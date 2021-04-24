@@ -1,0 +1,32 @@
+syntax = "proto3";
+option go_package = ".;streamer";
+  
+  // The request message containing the user's name.
+
+message StreamFile {
+	string Name = 1; //Relative path depending on what is sharing
+	string Path = 2; //Relative path depending on what is sharing
+	int64 Size = 3; //Relative path depending on what is sharing
+	uint32 Mode = 4; //Relative path depending on what is sharing
+	string ModTime = 5; //Relative path depending on what is sharing
+	string FullPath = 6; //Relative path depending on what is sharing
+}
+
+message Frame {
+	int32 T = 1;
+}
+
+message FrameError {
+	int32 T = 1;
+	string Err = 2;
+}
+
+message FrameNewStream {
+	int32 T = 1;
+	StreamFile Info = 2;
+}
+
+message FrameData {
+	int32 T = 1;
+	bytes Data = 2;
+}

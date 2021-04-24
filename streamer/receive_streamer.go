@@ -97,7 +97,7 @@ func (s *ReceiveStreamer) OnMessage(msg webrtc.DataChannelMessage) {
 			return
 		}
 
-		if err := s.handleNewStreamFrame(m.Info); err != nil {
+		if err := s.handleNewStreamFrame(*m.Info); err != nil {
 			s.SendFrame(FRAME_ERROR, &FrameError{Err: err.Error()})
 			return
 		}
@@ -118,14 +118,14 @@ func (s *ReceiveStreamer) streamFrameData(data []byte) {
 
 	b.Add(uint64(n))
 
-	if s.bytesWritten >= s.streamInfo.Size {
+	if s.bytesWritten >= s.streamInfo.Size_ {
 		s.stream.Close()
 		b.Finish()
 	}
 }
 
 func (s *ReceiveStreamer) isCurrentStreamSynced() bool {
-	if s.bytesWritten >= s.streamInfo.Size {
+	if s.bytesWritten >= s.streamInfo.Size_ {
 		s.log.Info("File is fully send")
 		return true
 	}
@@ -134,25 +134,25 @@ func (s *ReceiveStreamer) isCurrentStreamSynced() bool {
 
 func (s *ReceiveStreamer) handleNewStreamFrame(info StreamFile) error {
 	// info.FullPath = fmt.Sprintf("%s/%s", s.outputDir, info.Name)
-	info.fullPath = filepath.Join(s.outputDir, info.Name)
-	s.log.Infof("Opening file %s %s", info.fullPath, info.Mode)
+	info.FullPath = filepath.Join(s.outputDir, info.Name)
+	s.log.Infof("Opening file %s %s", info.FullPath, info.Mode)
 
-	if info.Mode.IsDir() {
+	if info.IsDir() {
 		//If this is a directory, just create it
-		if err := s.Mkdir(info.fullPath, info.Mode); err != nil {
+		if err := s.Mkdir(info.FullPath, info.FileMode()); err != nil {
 			return err
 		}
 		return nil
 	}
 
-	file, err := s.OpenFile(info.fullPath, info.Mode)
+	file, err := s.OpenFile(info.FullPath, info.FileMode())
 	if err != nil {
 		return err
 	}
 
 	s.stream = file
 	s.streamInfo = info
-	s.bandwidthCalc.NewStream(info.Name, uint64(info.Size))
+	s.bandwidthCalc.NewStream(info.Name, uint64(info.Size_))
 	s.bytesWritten = 0
 
 	// Track some stats
