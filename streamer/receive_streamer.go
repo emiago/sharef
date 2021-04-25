@@ -52,8 +52,7 @@ func NewReceiveStreamer(channel *webrtc.DataChannel, outputDir string, fwriter W
 
 	s.bandwidthCalc = NewBandwithCalc(s.output)
 	s.WriteFileStreamer = fwriter
-	s.ReadWriteFramer = &DataChannelFramer{channel}
-	// s.FrameEncoder = &JSONFramer{}
+	s.ReadWriteFramer = NewDataChannelFramer(channel)
 	return s
 }
 
@@ -86,6 +85,8 @@ func (s *ReceiveStreamer) OnMessage(msg webrtc.DataChannelMessage) {
 		return
 	}
 
+	// Each stream must be fully sent.
+	// If sender wants to send new stream before finish sending current that will endup with error.
 	switch m := f.(type) {
 	case *FrameData:
 		s.streamFrameData(m.Data)
@@ -118,14 +119,14 @@ func (s *ReceiveStreamer) streamFrameData(data []byte) {
 
 	b.Add(uint64(n))
 
-	if s.bytesWritten >= s.streamInfo.Size_ {
+	if s.bytesWritten >= s.streamInfo.SizeLen {
 		s.stream.Close()
 		b.Finish()
 	}
 }
 
 func (s *ReceiveStreamer) isCurrentStreamSynced() bool {
-	if s.bytesWritten >= s.streamInfo.Size_ {
+	if s.bytesWritten >= s.streamInfo.SizeLen {
 		s.log.Info("File is fully send")
 		return true
 	}
@@ -145,6 +146,7 @@ func (s *ReceiveStreamer) handleNewStreamFrame(info StreamFile) error {
 		return nil
 	}
 
+	//Here is problem. What if file exists, we have no way to return it.
 	file, err := s.OpenFile(info.FullPath, info.FileMode())
 	if err != nil {
 		return err
@@ -152,7 +154,7 @@ func (s *ReceiveStreamer) handleNewStreamFrame(info StreamFile) error {
 
 	s.stream = file
 	s.streamInfo = info
-	s.bandwidthCalc.NewStream(info.Name, uint64(info.Size_))
+	s.bandwidthCalc.NewStream(info.Name, uint64(info.SizeLen))
 	s.bytesWritten = 0
 
 	// Track some stats

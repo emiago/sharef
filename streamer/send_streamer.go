@@ -65,7 +65,7 @@ func NewSendStreamer(channel *webrtc.DataChannel, rootpath string, freader ReadF
 	r.channel.SetBufferedAmountLowThreshold(SEND_BUFFER_AMOUNT_LOW_TRESHOLD)
 	// r.sendFrameCb = r.sendFrame         //Neded for mocking
 	r.ReadFileStreamer = freader
-	r.ReadWriteFramer = &DataChannelFramer{channel}
+	r.ReadWriteFramer = NewDataChannelFramer(channel)
 	return r
 }
 
@@ -242,7 +242,7 @@ func (s *SendStreamer) processNewStream(file io.Reader, info StreamFile) error {
 		return nil
 	}
 
-	if err := s.streamReader(file, info.Size_, info.Name); err != nil {
+	if err := s.streamReader(file, info.SizeLen, info.Name); err != nil {
 		return errx.Wrapf(err, "Fail to stream file %s", info.Name)
 	}
 	return nil

@@ -6,8 +6,6 @@ import (
 	"bytes"
 	"context"
 	"fmt"
-	"github.com/emiraganov/sharef/streamer"
-	"github.com/emiraganov/sharef/watcher"
 	"io/ioutil"
 	"os"
 	"path"
@@ -16,6 +14,9 @@ import (
 	"syscall"
 	"testing"
 	"time"
+
+	"github.com/emiraganov/sharef/streamer"
+	"github.com/emiraganov/sharef/watcher"
 
 	log_prefixed "github.com/chappjc/logrus-prefix"
 	"github.com/emiraganov/goextra/osx"
@@ -95,9 +96,9 @@ func (suite *SuiteSendFile) TestStringReader() {
 		Name: path.Base(sendfile),
 		Path: sendfile,
 		// FullPath: sendfile,
-		Size:    readersize.Size(),
-		Mode:    os.FileMode(0664),
-		ModTime: time.Now(),
+		SizeLen: readersize.Size(),
+		Mode:    0664,
+		ModTime: time.Now().String(),
 	}
 
 	err := sender.StreamReader(context.Background(), reader, fi)

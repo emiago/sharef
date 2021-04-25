@@ -29,10 +29,10 @@ func (s *StreamFile) FileMode() os.FileMode {
 }
 
 func StreamFile2FileInfo(fi StreamFile) os.FileInfo {
-	t, _ := time.Parse(time.RFC3339Nano, fi.ModTime)
+	t, _ := time.Parse(time.RFC3339, fi.ModTime)
 	return &FileStat{
 		name:    fi.Name,
-		size:    fi.Size_,
+		size:    fi.SizeLen,
 		mode:    fi.FileMode(),
 		modtime: t,
 	}
@@ -42,8 +42,8 @@ func FileInfo2StreamFile(fi os.FileInfo, path string) StreamFile {
 	return StreamFile{
 		Name:    fi.Name(),
 		Path:    filepath.Clean(path),
-		Size_:   fi.Size(),
+		SizeLen: fi.Size(),
 		Mode:    uint32(fi.Mode()),
-		ModTime: fi.ModTime().String(),
+		ModTime: fi.ModTime().Format(time.RFC3339),
 	}
 }

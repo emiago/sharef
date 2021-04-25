@@ -6,6 +6,7 @@ proto:
 
 	# protoc -I streamer/ --gofast_out=streamer streamer/frame.proto
 	protoc -I streamer/ --gogofaster_out=streamer streamer/frame.proto
+	protoc -I streamer/ --js_out=import_style=commonjs,binary:streamer streamer/frame.proto
 
 build:
 	go build -o sharef

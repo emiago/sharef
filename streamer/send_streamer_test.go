@@ -19,6 +19,7 @@ type MockReadFileStreamer struct {
 	fakedata   []byte
 	readN      uint64
 	fakeDir    map[string][]os.FileInfo
+	encoder    FrameEncoder
 }
 
 func (s *MockReadFileStreamer) SendFrame(t int, f Framer) (n uint64, err error) {
@@ -27,7 +28,7 @@ func (s *MockReadFileStreamer) SendFrame(t int, f Framer) (n uint64, err error) 
 }
 
 func (s *MockReadFileStreamer) ReadFrame(msg []byte) (f Framer, err error) {
-	return UnmarshalFramer(msg)
+	return s.encoder.UnmarshalFramer(msg)
 }
 
 func (s *MockReadFileStreamer) OpenFile(path string) (io.ReadCloser, error) {
@@ -131,7 +132,7 @@ func TestSendStreamerProcessFile(t *testing.T) {
 	go func() {
 		//Fake response from receiver, and check is every processed
 		for {
-			sender.frameCh <- &Frame{Type: FRAME_OK}
+			sender.frameCh <- &Frame{T: FRAME_OK}
 		}
 	}()
 

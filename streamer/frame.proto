@@ -4,12 +4,12 @@ option go_package = ".;streamer";
   // The request message containing the user's name.
 
 message StreamFile {
-	string Name = 1; //Relative path depending on what is sharing
+	string Name = 1; 
 	string Path = 2; //Relative path depending on what is sharing
-	int64 Size = 3; //Relative path depending on what is sharing
-	uint32 Mode = 4; //Relative path depending on what is sharing
-	string ModTime = 5; //Relative path depending on what is sharing
-	string FullPath = 6; //Relative path depending on what is sharing
+	int64 SizeLen = 3; // File size in byte
+	uint32 Mode = 4; 
+	string ModTime = 5; 
+	string FullPath = 6; // This is only used to maintain fullpath reference from sender side
 }
 
 message Frame {
@@ -23,7 +23,7 @@ message FrameError {
 
 message FrameNewStream {
 	int32 T = 1;
-	StreamFile Info = 2;
+	StreamFile Info = 3;
 }
 
 message FrameData {

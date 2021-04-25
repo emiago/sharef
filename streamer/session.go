@@ -36,6 +36,7 @@ type Session struct {
 	sdpWriter      io.Writer
 	peerConnection *webrtc.PeerConnection
 	onCompletion   CompletionHandler
+	encoding       FrameEncoding
 }
 
 // New creates a new Session
@@ -43,6 +44,7 @@ func NewSession(SDPReader io.Reader, SDPWriter io.Writer) Session {
 	sess := Session{
 		sdpReader: SDPReader,
 		sdpWriter: SDPWriter,
+		encoding:  FrameEncodingProto,
 	}
 
 	return sess
@@ -54,6 +56,10 @@ func (s *Session) Close() error {
 	}
 
 	return nil
+}
+
+func (s *Session) SetEncoding(enc FrameEncoding) {
+	s.encoding = enc
 }
 
 // CreateConnection prepares a WebRTC connection
@@ -166,6 +172,17 @@ func (s *Session) onConnectionStateConnected(connected chan struct{}) func(conne
 			})
 		}
 	}
+}
+
+func (s *Session) createFileChannel() (*webrtc.DataChannel, error) {
+	label := DatachannelLabelProtobufstream
+	switch s.encoding {
+	case FrameEncodingJSON:
+		label = DatachannelLabelJsonstream
+	}
+
+	dataChannel, err := s.peerConnection.CreateDataChannel(label, DataChannelInitFileStream())
+	return dataChannel, err
 }
 
 // MustReadStream blocks until input is received from the stream

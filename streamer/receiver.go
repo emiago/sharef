@@ -69,10 +69,11 @@ func (s *Receiver) DialReverse() error {
 		return err
 	}
 
-	d, err := s.createFileChannel("filestream")
+	d, err := s.createFileChannel()
 	if err != nil {
 		return err
 	}
+	s.log.Debugf("Channel created %s", d.Label())
 
 	if err := s.CreateOffer(); err != nil {
 		s.log.Errorln(err)
@@ -110,9 +111,4 @@ func (s *Receiver) onConnectionStateChange() func(connectionState webrtc.ICEConn
 			close(s.Done)
 		}
 	}
-}
-
-func (s *Receiver) createFileChannel(name string) (*webrtc.DataChannel, error) {
-	dataChannel, err := s.peerConnection.CreateDataChannel(name, DataChannelInitFileStream())
-	return dataChannel, err
 }

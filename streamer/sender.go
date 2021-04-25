@@ -39,6 +39,10 @@ func NewSender(s Session) *Sender {
 	}
 }
 
+// Change encoding.
+// proto = binary encoding with protobuf
+// json = json encoding
+
 // Start the connection and the file transfer
 func (s *Sender) Dial() error {
 	connected := make(chan struct{})
@@ -47,10 +51,11 @@ func (s *Sender) Dial() error {
 		return err
 	}
 
-	channel, err := s.createFileChannel("filestream")
+	channel, err := s.createFileChannel()
 	if err != nil {
 		return err
 	}
+	s.log.Debugf("Channel created %s", channel.Label())
 
 	if err := s.CreateOffer(); err != nil {
 		return err
@@ -125,11 +130,6 @@ func (s *Sender) NewFileStreamer(dest string) (streamer *SendStreamer) {
 
 func (s *Sender) NewFileStreamerWithReader(dest string, freader ReadFileStreamer) (streamer *SendStreamer) {
 	return NewSendStreamer(s.filechannel, dest, freader)
-}
-
-func (s *Sender) createFileChannel(name string) (*webrtc.DataChannel, error) {
-	dataChannel, err := s.peerConnection.CreateDataChannel(name, DataChannelInitFileStream())
-	return dataChannel, err
 }
 
 func (s *Sender) onConnectionStateChange(connected chan struct{}) func(connectionState webrtc.ICEConnectionState) {

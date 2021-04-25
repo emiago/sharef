@@ -33,6 +33,7 @@ type MockWriteFileStreamer struct {
 	writedata  *bytes.Buffer
 	readN      uint64
 	openfiles  map[string][]os.FileInfo
+	encoder    FrameEncoder
 }
 
 func (s *MockWriteFileStreamer) SendFrame(t int, f Framer) (n uint64, err error) {
@@ -41,7 +42,7 @@ func (s *MockWriteFileStreamer) SendFrame(t int, f Framer) (n uint64, err error)
 }
 
 func (s *MockWriteFileStreamer) ReadFrame(msg []byte) (f Framer, err error) {
-	return UnmarshalFramer(msg)
+	return s.encoder.UnmarshalFramer(msg)
 }
 
 func (s *MockWriteFileStreamer) OpenFile(path string, mode os.FileMode) (io.WriteCloser, error) {
@@ -87,7 +88,7 @@ func checkNewStreamFrameSingle(t *testing.T, sf StreamFile, receiver *ReceiveStr
 	err := receiver.handleNewStreamFrame(sf)
 	require.Nil(t, err)
 
-	opened, ok := mocker.openfiles[receiver.streamInfo.fullPath]
+	opened, ok := mocker.openfiles[receiver.streamInfo.FullPath]
 	require.True(t, ok)
 	require.Equal(t, 1, len(opened))
 
@@ -104,11 +105,11 @@ func TestReceiveStreamerNewStreamFrame(t *testing.T) {
 	require.Nil(t, err)
 
 	t.Run("File", func(t *testing.T) {
-		checkNewStreamFrameSingle(t, StreamFile{Name: "file.txt", Size: int64(512), Mode: 0644}, receiver, mocker)
+		checkNewStreamFrameSingle(t, StreamFile{Name: "file.txt", SizeLen: int64(512), Mode: 0644}, receiver, mocker)
 	})
 
 	t.Run("FileUnderDir", func(t *testing.T) {
-		checkNewStreamFrameSingle(t, StreamFile{Name: "subdir/file.txt", Size: int64(512), Mode: 0644}, receiver, mocker)
+		checkNewStreamFrameSingle(t, StreamFile{Name: "subdir/file.txt", SizeLen: int64(512), Mode: 0644}, receiver, mocker)
 	})
 }
 
@@ -122,7 +123,7 @@ func TestReceiveStreamerStreamData(t *testing.T) {
 	require.Nil(t, err)
 
 	content := []byte("Here some content of file\n Giving some breaks \nNew lines")
-	sf := StreamFile{Name: "file.txt", Size: int64(len(content)), Mode: 0644}
+	sf := StreamFile{Name: "file.txt", SizeLen: int64(len(content)), Mode: 0644}
 
 	err = receiver.handleNewStreamFrame(sf)
 	require.Nil(t, err)
